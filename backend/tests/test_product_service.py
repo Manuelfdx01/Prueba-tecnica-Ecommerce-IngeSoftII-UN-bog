@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from app.schemas import ProductCreate, ProductUpdate
+from app.schemas import ProductCreate
 from app.services.products import (
     ProductHasOrdersError,
     ProductNotFoundError,
