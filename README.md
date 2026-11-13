@@ -25,10 +25,10 @@ Se incluye una cuenta administrativa de demostración para facilitar la revisió
 | Campo | Credencial |
 |---|---|
 | **Rol** | Administrador |
-| **Correo** | `admin@nexoshop.local` |
+| **Correo** | `admin@nexoshop.com` |
 | **Contraseña inicial** | `Admin123!` |
 
-La cuenta y los datos de demostración son creados por el módulo `backend/app/seed_admin.py` cuando no existe previamente el usuario administrador. La contraseña indicada corresponde a la configuración inicial del proyecto; si la cuenta ya fue creada y posteriormente modificada en la base de datos del entorno, prevalece la contraseña vigente en ese entorno.
+La cuenta y los datos de demostración son creados por el módulo `backend/app/seed_admin.py` cuando no existe previamente el usuario administrador. Si la base de datos conserva el correo anterior `admin@nexoshop.local`, el sembrado actualiza ese correo a `admin@nexoshop.com` sin modificar el identificador, la contraseña, el rol ni las relaciones del usuario. La contraseña indicada corresponde a la configuración inicial; si la cuenta ya fue creada y posteriormente modificada, prevalece la contraseña vigente en ese entorno.
 
 **Nota:** estas credenciales son exclusivamente para la evaluación de esta instancia de demostración. No deben reutilizarse en un entorno de producción.
 
