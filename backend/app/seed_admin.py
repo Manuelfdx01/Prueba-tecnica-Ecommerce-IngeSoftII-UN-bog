@@ -5,6 +5,10 @@ from app.core.security import hash_password
 from app.models import Product, User
 
 
+ADMIN_EMAIL = "admin@nexoshop.com"
+LEGACY_ADMIN_EMAIL = "admin@nexoshop.local"
+
+
 DEMO_PRODUCTS = [
     Product(
         name="Audífonos Studio",
@@ -47,13 +51,23 @@ def seed_database():
 
     with SessionLocal() as db:
         admin_exists = db.scalar(
-            select(User).where(User.email == "admin@nexoshop.local")
+            select(User).where(User.email == ADMIN_EMAIL)
         )
+
+        # Migra el correo anterior sin modificar el ID, la contraseña,
+        # el rol ni las relaciones del administrador existente.
+        legacy_admin = db.scalar(
+            select(User).where(User.email == LEGACY_ADMIN_EMAIL)
+        )
+
+        if legacy_admin and not admin_exists:
+            legacy_admin.email = ADMIN_EMAIL
+            admin_exists = legacy_admin
 
         if not admin_exists:
             admin = User(
                 name="Administrador",
-                email="admin@nexoshop.local",
+                email=ADMIN_EMAIL,
                 hashed_password=hash_password("Admin123!"),
                 role="admin",
             )
