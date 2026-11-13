@@ -299,7 +299,7 @@ Cada módulo tiene un motivo principal para cambiar:
 - services/products.py: reglas de aplicación del catálogo.
 - repositories/sqlalchemy_product_repository.py: persistencia de productos con SQLAlchemy.
 - services/orders.py: reglas transaccionales del checkout.
-- En frontend, services/api.js gestiona comunicación HTTP y hooks/useCart.js encapsula el estado y las reglas del carrito. App.jsx actúa como componente de composición de la pantalla.
+- En frontend, services/api.js gestiona comunicación HTTP, hooks/useCart.js encapsula las reglas del carrito y hooks/useSession.js administra autenticación y persistencia de sesión. App.jsx actúa como componente de composición de la pantalla.
 
 **Ejemplo:** el endpoint de listado delega el caso de uso al servicio ProductService. La ruta no construye consultas SQL ni conoce cómo se almacenan los productos.
 
@@ -338,7 +338,7 @@ Así, el servicio puede probarse con un repositorio falso y la persistencia pued
 - Las reglas del catálogo se implementan una sola vez en ProductService.
 - La lógica de checkout se centraliza en services/orders.py.
 - El frontend utiliza un único cliente HTTP en services/api.js, que normaliza la URL, agrega el token, interpreta errores y expone operaciones específicas.
-- El hook hooks/useCart.js centraliza cálculo de cantidades, subtotal, adición, eliminación y límites por existencias.
+- El hook hooks/useCart.js centraliza cálculo de cantidades, subtotal, adición, eliminación y límites por existencias.\n- El hook hooks/useSession.js encapsula autenticación, restauración de sesión y cierre de sesión.
 
 Los componentes llaman api.getProducts() o api.checkout(...); no necesitan repetir la construcción de URLs, encabezados ni manejo común de respuestas.
 
@@ -401,7 +401,7 @@ Las pruebas y la compilación deben ejecutarse en el entorno antes de integrar l
 3. **LSP:** mostrar que FakeProductRepository sustituye al adaptador SQLAlchemy en las pruebas respetando el contrato.
 4. **ISP:** mostrar que ProductRepository expone solo las operaciones del catálogo y que los esquemas de entrada/salida son específicos.
 5. **DIP:** seguir el flujo get_product_service → ProductService → ProductRepository; explicar que el servicio depende de una abstracción.
-6. **DRY:** mostrar el cliente api.js, el hook useCart.js y la reutilización de las dependencias de autenticación.
+6. **DRY:** mostrar el cliente api.js, los hooks useCart.js y useSession.js y la reutilización de las dependencias de autenticación.
 7. **Demostración funcional:** consultar productos en Swagger, registrar/autenticar un cliente, verificar el 403 al intentar una operación administrativa y ejecutar un checkout que actualice el inventario.
 
 **Conclusión para la presentación:** NexoShop separa los adaptadores HTTP, los casos de uso y la persistencia. El servicio de catálogo depende de un contrato sustituible, las reglas del carrito y la comunicación HTTP están centralizadas en módulos frontend reutilizables, y las pruebas ejercitan tanto la API como el servicio aislado. La arquitectura evita acoplamientos innecesarios y permite extender cada parte sin modificar las demás cuando el cambio pertenece a una responsabilidad diferente.
