@@ -212,6 +212,22 @@ La base de datos SQLite se crea dentro del Codespace. El script `python -m app.s
 - Las contraseñas se almacenan como hashes Argon2 en la columna `hashed_password`; no se guardan en texto plano. Por seguridad, no es posible consultar ni recuperar las contraseñas originales desde SQLite.
 - Si necesitas otra cuenta de prueba, regístrala desde la interfaz. Para probar el rol administrativo utiliza únicamente la cuenta sembrada por el proyecto.
 
+Para listar las cuentas que existen **actualmente** en el archivo SQLite de este Codespace (sin mostrar hashes ni contraseñas), ejecuta desde `backend/` con el entorno virtual activo:
+
+```bash
+python - <<'PY'
+from app.core.database import SessionLocal
+from app.models import User
+
+with SessionLocal() as db:
+    users = db.query(User).order_by(User.id).all()
+    for user in users:
+        print(f"{user.id}\t{user.name}\t{user.email}\t{user.role}")
+PY
+```
+
+El resultado muestra los usuarios registrados en tu base de datos activa. La lista puede ser diferente de la de otra instalación o Codespace.
+
 Estas credenciales son exclusivamente para la demostración académica. No reutilices la contraseña de ejemplo en otros servicios ni en un entorno real.
 
 ## Docker opcional
