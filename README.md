@@ -1,336 +1,256 @@
-# NexoShop — E-commerce simplificado
+# NexoShop — Plataforma de comercio electrónico
 
-Aplicación académica full-stack para demostrar la comunicación entre un frontend React y un backend FastAPI, con persistencia en base de datos. La demostración se ejecuta íntegramente en **GitHub Codespaces**: no requiere contratar hosting, publicar el backend en otro proveedor ni utilizar una base de datos administrada externa.
+NexoShop es una aplicación web de comercio electrónico desarrollada como proyecto académico full-stack. Integra una interfaz de usuario construida con React y una API REST desarrollada con FastAPI, con persistencia de datos mediante SQLAlchemy y una base de datos relacional.
 
-## Demostración en GitHub Codespaces
-
-Este es el Codespace configurado para la demostración:
-
-| Componente | URL |
-|---|---|
-| **Tienda (frontend React)** | https://crispy-waddle-4jw95g5p449r37x7v-5173.app.github.dev/ |
-| **API FastAPI** | https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/ |
-| **Documentación interactiva (Swagger)** | https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/docs |
-| **Estado del backend** | https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/health |
-
-**Importante:** las direcciones anteriores pertenecen a un Codespace concreto. Para que respondan, el Codespace debe estar iniciado y los dos servidores deben estar ejecutándose. En la pestaña **Ports** de Codespaces, los puertos 5173 y 8000 deben estar reenviados. Si el profesor va a abrir la tienda desde otro navegador o dispositivo, configura ambos puertos como **Public**; recuerda que esto hace accesible públicamente la aplicación mientras el Codespace esté activo.
-
-## Arquitectura y comunicación
-
-```text
-Navegador del usuario
-        |
-        v
-Frontend React + Vite (puerto 5173)
-        |
-        | solicitudes HTTP / JSON
-        v
-API REST FastAPI (puerto 8000)
-        |
-        v
-Servicios y reglas de negocio
-        |
-        v
-SQLAlchemy ORM
-        |
-        v
-SQLite (backend/ecommerce.db)
-```
-
-- **Frontend:** React 19 + Vite. Presenta el catálogo, autenticación, carrito, historial de pedidos y panel administrativo.
-- **Backend:** FastAPI expone endpoints REST. Recibe solicitudes HTTP, valida los datos con Pydantic, aplica permisos y devuelve respuestas JSON.
-- **ORM:** SQLAlchemy permite consultar y modificar las tablas de la base de datos usando modelos y objetos de Python.
-- **Base de datos para Codespaces:** SQLite. Es un archivo local dentro del Codespace, ubicado en `backend/ecommerce.db`; no requiere instalar ni contratar un servidor de base de datos.
-- **Migraciones:** Alembic administra la creación y evolución del esquema.
-- **CORS:** FastAPI permite las solicitudes del dominio del frontend mediante la variable `CORS_ORIGINS`.
-
-El navegador no consulta directamente SQLite. El flujo siempre pasa por FastAPI: React envía una petición a la API, FastAPI ejecuta la lógica y SQLAlchemy lee o modifica la base de datos, y finalmente la API devuelve el resultado al frontend.
-
-## Tecnologías
-
-- Frontend: React 19, Vite y CSS.
-- Backend: Python 3.12+, FastAPI, Pydantic y Uvicorn.
-- Persistencia para Codespaces: SQLite.
-- Persistencia alternativa con Docker: PostgreSQL 16 en un contenedor local.
-- ORM: SQLAlchemy 2.
-- Seguridad: JWT, contraseñas con hash Argon2 y autorización por roles.
-- Migraciones: Alembic.
-- Pruebas: pytest y FastAPI TestClient.
-- Docker Compose: alternativa opcional para ejecutar frontend, backend y PostgreSQL en contenedores.
+El proyecto implementa los procesos principales de una tienda en línea: consulta de catálogo, autenticación de usuarios, gestión del carrito, generación de pedidos, control de inventario y administración de productos y órdenes.
 
 ## Funcionalidades
 
-- Registro e inicio de sesión; el registro público siempre crea usuarios con rol `customer`.
-- Catálogo con búsqueda, categorías, precios y disponibilidad.
-- Carrito de compras.
-- Checkout: el backend vuelve a consultar los precios y el stock; no confía en el total enviado por el navegador.
-- Descuento de inventario dentro de una transacción para evitar vender más unidades de las disponibles.
-- Historial de pedidos del cliente.
-- Panel administrativo con métricas, creación, edición y eliminación de productos e historial global de pedidos.
-- Validación de permisos para las operaciones administrativas.
-- Pago simulado: no se reciben ni almacenan números de tarjetas.
+### Experiencia de compra
+- Visualización del catálogo de productos.
+- Consulta y búsqueda de productos, categorías, precios y disponibilidad.
+- Gestión del carrito de compras.
+- Registro e inicio de sesión de clientes.
+- Generación de pedidos mediante el proceso de checkout.
+- Consulta del historial de pedidos del cliente.
 
-## Ejecución en el Codespace existente
+### Administración
+- Acceso a funcionalidades administrativas mediante control de roles.
+- Creación, consulta, actualización y eliminación de productos.
+- Consulta global de pedidos.
+- Visualización de métricas generales de la tienda.
 
-### 1. Actualizar el repositorio
+### Reglas de negocio
+- El registro público asigna el rol de cliente.
+- El backend valida los datos recibidos y aplica las reglas de autorización.
+- Durante el checkout, los precios y las existencias se consultan en el servidor.
+- La actualización del inventario y la creación del pedido se realizan dentro de una transacción para mantener la consistencia de los datos.
+- El procesamiento de pagos es simulado; la aplicación no procesa transacciones bancarias ni almacena datos de tarjetas.
 
-Abre el Codespace asociado al repositorio y ejecuta desde la raíz:
+## Arquitectura
 
-```bash
-git pull origin main
+La solución sigue una arquitectura cliente-servidor organizada en dos aplicaciones principales:
+
+```text
+┌──────────────────────────────┐
+│       Cliente / navegador    │
+└──────────────┬───────────────┘
+               │ HTTP / JSON
+               ▼
+┌──────────────────────────────┐
+│       Frontend React         │
+│          Vite                │
+└──────────────┬───────────────┘
+               │ API REST
+               ▼
+┌──────────────────────────────┐
+│        Backend FastAPI       │
+│  Rutas, validación y lógica   │
+│         de negocio            │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│       SQLAlchemy ORM         │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│     Base de datos SQL        │
+│   SQLite / PostgreSQL        │
+└──────────────────────────────┘
 ```
 
-### 2. Preparar la configuración
+El frontend consume los endpoints HTTP de FastAPI e intercambia información en formato JSON. El backend centraliza la validación, autenticación, autorización y ejecución de las reglas de negocio. La persistencia se gestiona mediante modelos y sesiones de SQLAlchemy; el cliente no accede directamente a la base de datos.
+
+## Tecnologías
+
+| Componente | Tecnología |
+|---|---|
+| Interfaz web | React 19 |
+| Herramienta de desarrollo frontend | Vite |
+| Estilos | CSS |
+| API | Python, FastAPI y Uvicorn |
+| Validación de datos | Pydantic |
+| ORM | SQLAlchemy 2 |
+| Base de datos principal de desarrollo | SQLite |
+| Base de datos alternativa | PostgreSQL 16 |
+| Autenticación | JSON Web Tokens (JWT) |
+| Hash de contraseñas | Argon2 |
+| Migraciones | Alembic |
+| Pruebas | pytest y FastAPI TestClient |
+| Contenedores | Docker y Docker Compose |
+
+## Estructura general
+
+```text
+.
+├── frontend/                 # Aplicación React
+├── backend/                  # API FastAPI
+│   ├── app/                  # Aplicación, modelos y lógica
+│   ├── alembic/               # Migraciones de base de datos
+│   └── ecommerce.db          # Base SQLite (generada en ejecución)
+├── docker-compose.yml        # Orquestación de servicios
+└── README.md
+```
+
+## Persistencia de datos
+
+La aplicación admite dos configuraciones de base de datos:
+
+- **SQLite:** configuración ligera para desarrollo y ejecución en un único entorno. En la configuración utilizada por Codespaces, el archivo de base de datos se encuentra en `backend/ecommerce.db`.
+- **PostgreSQL 16:** alternativa ejecutada mediante Docker Compose, dentro de la red de contenedores del proyecto.
+
+SQLAlchemy proporciona la capa de acceso a datos y Alembic administra las migraciones del esquema. La configuración de la conexión se define mediante la variable de entorno `DATABASE_URL`.
+
+## Seguridad
+
+- Autenticación basada en tokens JWT.
+- Almacenamiento de contraseñas mediante hashes Argon2.
+- Separación de permisos entre usuarios con rol `customer` y `admin`.
+- Validación de datos de entrada en el backend.
+- Restricción de operaciones administrativas según el rol del usuario.
+- Verificación de precios y disponibilidad en el servidor durante el checkout.
+- Configuración de orígenes permitidos mediante CORS.
+
+Las claves de firma, credenciales y demás valores sensibles deben suministrarse mediante variables de entorno y no deben incluirse en el control de versiones.
+
+## Requisitos
+
+Para ejecutar el proyecto sin contenedores se requiere:
+
+- Python 3.12 o superior.
+- Node.js y npm.
+- Git.
+
+Para la ejecución contenerizada se requiere Docker y Docker Compose.
+
+## Configuración y ejecución
+
+### Backend
 
 Desde la raíz del repositorio:
-
-```bash
-cp backend/.env.codespaces.example backend/.env
-cp frontend/.env.codespaces.example frontend/.env
-```
-
-Los archivos de ejemplo ya contienen las direcciones de este Codespace. El archivo `backend/.env` configura SQLite y autoriza CORS desde el frontend; `frontend/.env` indica a React la URL de FastAPI.
-
-Si GitHub asigna otras direcciones a un Codespace nuevo, actualiza:
-- `VITE_API_URL` en `frontend/.env`, usando la URL del puerto 8000 seguida de `/api`.
-- `CORS_ORIGINS` en `backend/.env`, usando únicamente el origen del frontend (puerto 5173), sin `/api`.
-
-Después de modificar `.env`, reinicia los servidores para que tomen la configuración.
-
-**Valor correcto para el Codespace de esta demostración:**
-
-```env
-VITE_API_URL=https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/api
-```
-
-La implementación de `App.jsx` normaliza la URL base: elimina las barras finales y agrega `/api` si todavía no está presente. Así, tanto una variable con el dominio raíz como una variable terminada en `/api/` se convierten en una base correcta, y las solicitudes usan rutas como `https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/api/products`. Se recomienda mantener el valor explícito con `/api` y sin barra final para que la configuración sea fácil de verificar.
-
-**Si `GET /api/products` responde 200 con `curl` pero el navegador muestra 404:**
-
-1. Revisa el valor activo con `cat frontend/.env`.
-2. Corrige `VITE_API_URL` con el valor anterior.
-3. Detén Vite con `Ctrl+C` en su terminal y vuelve a iniciarlo desde `frontend/` con `npm run dev -- --host 0.0.0.0`; Vite lee las variables `.env` al arrancar.
-4. En DevTools → Network → Fetch/XHR, confirma que la petición sea `GET https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/api/products` y tenga estado `200`.
-
-La plantilla versionada `frontend/.env.codespaces.example` ya incluye la ruta `/api` correcta. El archivo `frontend/.env` es configuración local del Codespace y puede estar ignorado por Git; comprueba y corrige ese archivo en el Codespace activo.
-
-### 3. Preparar la base de datos y el administrador
-
-En una terminal:
 
 ```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
-alembic upgrade head
-python -m app.seed_admin
 ```
 
-Esto instala las dependencias, aplica la migración inicial y crea los datos de demostración si todavía no existen. La base SQLite se crea en `backend/ecommerce.db`. No hace falta ejecutar PostgreSQL ni conectarse a un servicio externo.
-
-### 4. Iniciar FastAPI
-
-En esa misma terminal, desde `backend/`:
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Comprueba el backend en:
-- API: https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/
-- Swagger: https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/docs
-- Health check: https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/health
-
-El endpoint `/health` debe responder:
-
-```json
-{"status":"ok"}
-```
-
-### 5. Iniciar React
-
-Abre una segunda terminal desde la raíz del repositorio:
-
-```bash
-cd frontend
-npm install
-npm run dev -- --host 0.0.0.0
-```
-
-Abre la tienda en:
-
-https://crispy-waddle-4jw95g5p449r37x7v-5173.app.github.dev/
-
-Vite mantiene la actualización automática del frontend cuando guardas cambios en sus archivos. Uvicorn, al ejecutarse con `--reload`, reinicia el backend cuando detecta cambios en Python.
-
-### 6. Verificar que frontend y backend se comunican
-
-La prueba debe confirmar una petición real del navegador al backend, no solamente que las dos páginas abren.
-
-**A. Comprobar la petición desde React**
-
-1. Abre la tienda en el puerto 5173.
-2. Abre las herramientas de desarrollador del navegador (`F12`) y entra en **Network → Fetch/XHR**.
-3. Recarga la tienda.
-4. Busca una petición a `/api/products`. La URL debe apuntar al dominio del puerto 8000.
-5. Selecciona la petición y comprueba que el estado sea **200 OK** y que la respuesta sea un JSON con productos.
-
-**B. Comparar la respuesta de FastAPI**
-
-Abre Swagger en `/docs`, despliega `GET /api/products`, pulsa **Try it out** y luego **Execute**. Debe responder `200` con el catálogo que utiliza la tienda.
-
-También puedes comprobarlo desde una terminal del Codespace:
-
-```bash
-curl -i http://localhost:8000/api/products
-```
-
-**C. Comprobar autenticación y persistencia**
-
-1. Inicia sesión con la cuenta de administrador indicada en la sección de credenciales.
-2. Registra un cliente nuevo desde la interfaz y utiliza la contraseña que acabas de definir.
-3. Inicia sesión como cliente, agrega productos al carrito y realiza una compra.
-4. Consulta el historial del cliente y comprueba que el pedido aparece.
-5. Recarga el catálogo o vuelve a consultar `GET /api/products`: el stock del producto comprado debe reflejar el descuento.
-6. Entra como administrador y comprueba que el pedido aparece en el panel administrativo.
-
-Si la tienda muestra productos de demostración pese a que FastAPI está detenido, recuerda que el frontend incluye un catálogo visual de respaldo. Por eso, la evidencia importante es la petición `/api/products` en Network con respuesta `200` desde el puerto 8000.
-
-## Base de datos: SQLite en Codespaces
-
-La configuración de Codespaces usa:
+Configura las variables de entorno necesarias para la aplicación, incluyendo `DATABASE_URL` y `CORS_ORIGINS`. Para una ejecución con SQLite, la configuración de base de datos puede utilizar:
 
 ```env
 DATABASE_URL=sqlite:///./ecommerce.db
 ```
 
-Como el backend se inicia desde la carpeta `backend/`, el archivo se guarda en `backend/ecommerce.db`.
-
-- No se necesita instalar un servidor PostgreSQL.
-- Alembic aplica el esquema con `alembic upgrade head`.
-- `python -m app.seed_admin` agrega el administrador y productos iniciales si no existen.
-- El archivo de base de datos permanece en el almacenamiento del Codespace cuando este se detiene y se vuelve a iniciar. No elimines el Codespace ni el archivo si quieres conservar los datos de la demostración.
-- SQLite es apropiado para esta demostración académica de un solo entorno; para un sistema con múltiples instancias o carga concurrente elevada conviene usar PostgreSQL.
-
-## Usuarios y credenciales de demostración
-
-La base de datos SQLite se crea dentro del Codespace. El script `python -m app.seed_admin` crea el administrador y los productos de ejemplo si todavía no existen.
-
-| Tipo de usuario | Correo / usuario | Contraseña |
-|---|---|---|
-| Administrador | `admin@nexoshop.local` | `Admin123!` (contraseña inicial del seed) |
-| Cliente | El correo elegido al registrarse en la tienda | La contraseña definida durante el registro |
-
-**Importante sobre las contraseñas:**
-
-- El administrador anterior es la cuenta inicial definida en `backend/app/seed_admin.py`. El script no restablece la contraseña si ese correo ya existe en la base de datos; si la cuenta fue creada anteriormente con otra contraseña, la contraseña inicial podría no funcionar.
-- Los clientes no tienen una contraseña predeterminada: cada uno crea su propia cuenta desde la tienda.
-- Las contraseñas se almacenan como hashes Argon2 en la columna `hashed_password`; no se guardan en texto plano. Por seguridad, no es posible consultar ni recuperar las contraseñas originales desde SQLite.
-- Si necesitas otra cuenta de prueba, regístrala desde la interfaz. Para probar el rol administrativo utiliza únicamente la cuenta sembrada por el proyecto.
-
-Para listar las cuentas que existen **actualmente** en el archivo SQLite de este Codespace (sin mostrar hashes ni contraseñas), ejecuta desde `backend/` con el entorno virtual activo:
+Aplica las migraciones y prepara los datos iniciales:
 
 ```bash
-python - <<'PY'
-from app.core.database import SessionLocal
-from app.models import User
-
-with SessionLocal() as db:
-    users = db.query(User).order_by(User.id).all()
-    for user in users:
-        print(f"{user.id}\t{user.name}\t{user.email}\t{user.role}")
-PY
+alembic upgrade head
+python -m app.seed_admin
 ```
 
-El resultado muestra los usuarios registrados en tu base de datos activa. La lista puede ser diferente de la de otra instalación o Codespace.
+Inicia el servidor:
 
-Estas credenciales son exclusivamente para la demostración académica. No reutilices la contraseña de ejemplo en otros servicios ni en un entorno real.
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
-## Docker opcional
+La API y su documentación interactiva estarán disponibles en el puerto 8000. La documentación OpenAPI se encuentra en `/docs`.
 
-Docker se conserva como una segunda forma de ejecutar el proyecto. No es necesario para la demostración en Codespaces descrita arriba.
+### Frontend
 
-Desde la raíz del repositorio:
+En otra terminal, desde la raíz del repositorio:
+
+```bash
+cd frontend
+npm install
+```
+
+Configura la variable `VITE_API_URL` con la URL base de la API, incluyendo el prefijo `/api`. Por ejemplo, para una ejecución local:
+
+```env
+VITE_API_URL=http://localhost:8000/api
+```
+
+Inicia el servidor de desarrollo:
+
+```bash
+npm run dev -- --host 0.0.0.0
+```
+
+El frontend se ejecuta por defecto en el puerto 5173. Las variables de entorno de Vite se cargan al iniciar el servidor de desarrollo.
+
+## Ejecución con Docker Compose
+
+El repositorio incluye una configuración alternativa para ejecutar los servicios contenerizados. Desde la raíz del proyecto:
 
 ```bash
 docker compose up --build
 ```
 
-Docker Compose inicia tres contenedores:
-1. **db:** PostgreSQL 16, con volumen `postgres_data`.
-2. **backend:** FastAPI; aplica las migraciones y prepara el administrador al iniciar.
-3. **frontend:** React + Vite.
+La configuración levanta los servicios de frontend, backend y PostgreSQL 16. La base de datos utiliza un volumen de Docker para persistir la información entre reinicios de los contenedores.
 
-Con Docker local, abre:
-- Tienda: http://localhost:5173
-- Swagger: http://localhost:8000/docs
-
-Para detener los contenedores sin borrar los datos:
+Para detener los servicios:
 
 ```bash
 docker compose down
 ```
 
-Para detenerlos y borrar también el volumen de PostgreSQL (esto elimina los datos persistidos):
+Para detenerlos y eliminar también el volumen de datos de PostgreSQL:
 
 ```bash
 docker compose down -v
 ```
 
-En Docker, el backend utiliza PostgreSQL dentro de la red privada de Compose. No se conecta a un proveedor externo. La configuración de Docker es independiente de la configuración SQLite usada en Codespaces.
+La configuración de Docker utiliza PostgreSQL dentro de la red privada de Compose; no requiere una base de datos administrada externa.
 
-## Endpoints principales de FastAPI
+## API REST
 
-| Método | Endpoint | Función |
+Los principales recursos expuestos por el backend son:
+
+| Método | Endpoint | Descripción |
 |---|---|---|
-| GET | `/health` | Comprobar que el backend está activo |
-| POST | `/api/auth/register` | Registrar cliente |
-| POST | `/api/auth/login` | Iniciar sesión y obtener JWT |
-| GET | `/api/auth/me` | Consultar usuario autenticado |
-| GET | `/api/products` | Listar productos |
-| GET | `/api/products/{id}` | Consultar producto |
-| POST | `/api/products` | Crear producto (admin) |
-| PATCH | `/api/products/{id}` | Editar producto (admin) |
-| DELETE | `/api/products/{id}` | Eliminar producto (admin) |
-| POST | `/api/orders/checkout` | Crear pedido |
-| GET | `/api/orders/me` | Historial del cliente |
-| GET | `/api/admin/summary` | Métricas (admin) |
-| GET | `/api/admin/orders` | Pedidos globales (admin) |
+| GET | `/health` | Estado del servicio |
+| POST | `/api/auth/register` | Registro de clientes |
+| POST | `/api/auth/login` | Autenticación |
+| GET | `/api/auth/me` | Información del usuario autenticado |
+| GET | `/api/products` | Listado de productos |
+| GET | `/api/products/{id}` | Consulta de un producto |
+| POST | `/api/products` | Creación de productos (administrador) |
+| PATCH | `/api/products/{id}` | Actualización de productos (administrador) |
+| DELETE | `/api/products/{id}` | Eliminación de productos (administrador) |
+| POST | `/api/orders/checkout` | Creación de pedidos |
+| GET | `/api/orders/me` | Historial de pedidos del cliente |
+| GET | `/api/admin/summary` | Métricas administrativas |
+| GET | `/api/admin/orders` | Consulta global de pedidos (administrador) |
 
-La documentación interactiva y los esquemas OpenAPI están disponibles en `/docs` y `/openapi.json` del backend.
+La especificación OpenAPI y la documentación interactiva de los endpoints se generan automáticamente mediante FastAPI y están disponibles en `/docs` cuando el backend está en ejecución.
 
 ## Migraciones y pruebas
 
-Desde `backend/`, con el entorno virtual activo:
+Las migraciones del esquema se administran con Alembic. Para aplicar las migraciones:
 
 ```bash
+cd backend
 alembic upgrade head
+```
+
+Para ejecutar las pruebas automatizadas:
+
+```bash
 pytest -q
 ```
 
-Para generar una migración después de modificar los modelos:
+Para generar una migración a partir de cambios en los modelos:
 
 ```bash
-alembic revision --autogenerate -m "describe el cambio"
+alembic revision --autogenerate -m "descripcion del cambio"
 ```
 
-Revisa el archivo generado antes de aplicarlo.
+Las migraciones generadas deben revisarse antes de aplicarse.
 
-## Recorrido sugerido para la presentación
+## Alcance
 
-1. Abre la tienda en el puerto 5173.
-2. Abre Swagger en el puerto 8000 y muestra que la API está activa.
-3. Ejecuta `GET /api/products` y relaciona la respuesta JSON con el catálogo del frontend.
-4. Inicia sesión como administrador y muestra métricas y CRUD de productos.
-5. Registra un cliente, inicia sesión y realiza una compra.
-6. Consulta el historial y verifica que el backend actualizó el inventario en SQLite.
-7. Muestra que los pedidos aparecen en el panel administrativo.
-
-## Alcance y limitaciones
-
-- La demostración de frontend, FastAPI y SQLite se ejecuta dentro del mismo GitHub Codespace. No se utiliza Vercel, Render, Supabase ni una base de datos alojada por terceros.
-- GitHub Codespaces es el entorno donde se ejecuta la aplicación; por eso el Codespace debe permanecer activo durante la presentación. Los enlaces de los puertos no son un hosting permanente.
-- El pago es simulado y no representa una transacción bancaria.
-- Las imágenes de productos de ejemplo apuntan a URLs de Unsplash; esto no afecta la comunicación entre frontend, API y base de datos. Si se requiere que tampoco las imágenes dependan de Internet, se pueden sustituir por archivos locales del proyecto.
-- Para producción real se necesitarían secretos seguros, HTTPS, CORS restringido, controles adicionales de seguridad, monitorización, copias de seguridad y una pasarela de pago real.
+NexoShop implementa un flujo académico de comercio electrónico con autenticación, autorización por roles, administración de catálogo, pedidos y persistencia relacional. El módulo de pago es una simulación y no está integrado con entidades financieras ni pasarelas de pago. La configuración de seguridad y despliegue está orientada al entorno de desarrollo y demostración; una puesta en producción requeriría, entre otros aspectos, gestión de secretos, políticas de seguridad reforzadas, monitorización, copias de seguridad y configuración de infraestructura apropiada.
