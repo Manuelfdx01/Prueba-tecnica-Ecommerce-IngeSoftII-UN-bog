@@ -148,7 +148,7 @@ Esta es la forma recomendada de iniciar el proyecto en el entorno de desarrollo 
 ### 1. Abrir el Codespace
 
 1. Abre el repositorio en GitHub y selecciona **Code → Codespaces**.
-2. Inicia el Codespace existente o crea uno nuevo desde la rama `main).
+2. Inicia el Codespace existente o crea uno nuevo desde la rama `main`.
 3. Abre una terminal integrada en VS Code.
 
 Verifica que estás trabajando en la rama principal:
@@ -190,7 +190,7 @@ Inicia FastAPI:
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-El backend queda escuchando en el puerto `8000). Mantén esta terminal abierta.
+El backend queda escuchando en el puerto `8000`. Mantén esta terminal abierta.
 
 ### 3. Preparar y ejecutar el frontend
 
@@ -202,7 +202,7 @@ npm install
 cp .env.codespaces.example .env
 ```
 
-Comprueba que `VITE_API_URL` tenga la URL reenviada del puerto 8000, terminada en `/api). Por ejemplo:
+Comprueba que `VITE_API_URL` tenga la URL reenviada del puerto 8000, terminada en `/api`. Por ejemplo:
 
 ```env
 VITE_API_URL=https://<tu-codespace>-8000.app.github.dev/api
@@ -214,7 +214,7 @@ Inicia Vite:
 npm run dev -- --host 0.0.0.0
 ```
 
-El frontend queda escuchando en el puerto `5173). Mantén también esta terminal abierta.
+El frontend queda escuchando en el puerto `5173`. Mantén también esta terminal abierta.
 
 ### 4. Configurar y abrir los puertos
 
@@ -225,15 +225,15 @@ En la pestaña **Ports** de VS Code:
 | `8000` | FastAPI | API REST y documentación |
 | `5173` | Vite | Aplicación web |
 
-Abre la URL reenviada del puerto `5173) para usar la tienda. Para verificar el backend, abre la URL del puerto `8000` y añade `/docs) para Swagger UI o consulta `/health).
+Abre la URL reenviada del puerto `5173` para usar la tienda. Para verificar el backend, abre la URL del puerto `8000` y añade `/docs` para Swagger UI o consulta `/health`.
 
 Los puertos pueden mantenerse como **Private** para uso personal. Si necesitas que otra persona pruebe la aplicación, cambia la visibilidad del puerto correspondiente a **Public** solo cuando sea necesario y comparte las URLs generadas por Codespaces.
 
-**Importante:** los dominios `.app.github.dev` dependen del Codespace y del reenvío de puertos. Si recreas el Codespace o cambia la URL, actualiza `VITE_API_URL) en el frontend y `CORS_ORIGINS) en el backend con los nuevos orígenes. Reinicia ambos servidores después de modificar los archivos `.env), porque Vite y la configuración de FastAPI leen esas variables al iniciar.
+**Importante:** los dominios `.app.github.dev` dependen del Codespace y del reenvío de puertos. Si recreas el Codespace o cambia la URL, actualiza `VITE_API_URL` en el frontend y `CORS_ORIGINS` en el backend con los nuevos orígenes. Reinicia ambos servidores después de modificar los archivos `.env`, porque Vite y la configuración de FastAPI leen esas variables al iniciar.
 
 ### 5. Detener y reanudar
 
-Para detener los servidores, usa `Ctrl + C) en cada terminal. Esto no elimina el archivo SQLite ni los cambios del repositorio. Para volver a trabajar, abre el mismo Codespace y ejecuta nuevamente los comandos de inicio del backend y frontend; no necesitas crear otro entorno cada vez.
+Para detener los servidores, usa `Ctrl + C` en cada terminal. Esto no elimina el archivo SQLite ni los cambios del repositorio. Para volver a trabajar, abre el mismo Codespace y ejecuta nuevamente los comandos de inicio del backend y frontend; no necesitas crear otro entorno cada vez.
 
 ## Configuración y ejecución
 
@@ -368,7 +368,7 @@ Estas pruebas cubren endpoints y reglas seleccionadas del catálogo, autenticaci
 
 ### Validación de frontend
 
-El frontend actualmente no tiene un framework ni una suite de pruebas unitarias o de componentes configurada en `package.json`. La validación automatizada de frontend en CI ejecuta `npm run build), que usa Vite y esbuild para transformar los módulos JSX/JavaScript y generar el paquete de producción. Esto detecta, entre otros problemas, errores de sintaxis e importaciones que impiden compilar la aplicación, pero **no equivale a pruebas funcionales de interacción en el navegador**.
+El frontend actualmente no tiene un framework ni una suite de pruebas unitarias o de componentes configurada en `package.json`. La validación automatizada de frontend en CI ejecuta `npm run build`, que usa Vite y esbuild para transformar los módulos JSX/JavaScript y generar el paquete de producción. Esto detecta, entre otros problemas, errores de sintaxis e importaciones que impiden compilar la aplicación, pero **no equivale a pruebas funcionales de interacción en el navegador**.
 
 Para ejecutar la misma validación localmente:
 
@@ -380,10 +380,10 @@ npm run build
 
 ### Integración continua con GitHub Actions
 
-El workflow `.github/workflows/ci.yml` ejecuta dos trabajos independientes cuando hay un push a `main` o a ramas `feat/**), y cuando se abre o actualiza un Pull Request dirigido a `main`:
+El workflow `.github/workflows/ci.yml` ejecuta dos trabajos independientes cuando hay un push a `main` o a ramas `feat/**`, y cuando se abre o actualiza un Pull Request dirigido a `main`:
 
-- **backend:** configura Python 3.12, instala `backend/requirements-dev.txt`, aplica las migraciones con `alembic upgrade head` y ejecuta `pytest -q).
-- **frontend:** configura Node.js 20, instala dependencias con `npm install` y ejecuta `npm run build).
+- **backend:** configura Python 3.12, instala `backend/requirements-dev.txt`, aplica las migraciones con `alembic upgrade head` y ejecuta `pytest -q`.
+- **frontend:** configura Node.js 20, instala dependencias con `npm install` y ejecuta `npm run build`.
 
 Un resultado exitoso de CI significa que las pruebas automatizadas definidas para backend finalizaron correctamente y que el frontend pudo compilarse para producción. No significa que exista una suite de pruebas de interfaz de usuario para frontend.
 
