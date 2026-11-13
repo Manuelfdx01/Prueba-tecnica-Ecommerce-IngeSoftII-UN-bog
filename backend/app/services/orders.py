@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy import update
@@ -15,7 +16,7 @@ def checkout(db:Session,user_id:int,lines:list[dict])->Order:
    result=db.execute(update(Product).where(Product.id==pid,Product.stock>=qty).values(stock=Product.stock-qty))
    if result.rowcount!=1: raise HTTPException(409,f'Producto {pid} inexistente o sin stock suficiente')
    products[pid]=db.get(Product,pid)
-  total=sum(float(products[pid].price)*qty for pid,qty in quantities.items())
+  total=sum((Decimal(str(products[pid].price))*qty for pid,qty in quantities.items()),Decimal('0.00'))
   order=Order(user_id=user_id,status='paid',payment_reference='SIM-'+uuid4().hex[:12].upper(),total=total)
   db.add(order); db.flush()
   for pid,qty in quantities.items():

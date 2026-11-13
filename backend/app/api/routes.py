@@ -5,13 +5,13 @@ from sqlalchemy.orm import Session,selectinload
 from app.core.database import get_db
 from app.core.security import hash_password,verify_password,create_access_token
 from app.dependencies import get_current_user,require_admin
-from app.models import User,Product,Order
-from app.schemas import UserCreate,UserOut,TokenOut,ProductCreate,ProductOut,CheckoutIn,OrderOut
+from app.models import User,Product,Order,OrderItem
+from app.schemas import UserCreate,UserOut,TokenOut,ProductCreate,ProductUpdate,ProductOut,CheckoutIn,OrderOut
 from app.services.orders import checkout
 api=APIRouter()
 @api.post('/auth/register',response_model=UserOut,status_code=201)
 def register(payload:UserCreate,db:Session=Depends(get_db)):
- email=payload.email.lower()
+ email=str(payload.email).lower()
  if db.scalar(select(User).where(User.email==email)): raise HTTPException(409,'Este correo ya está registrado')
  user=User(name=payload.name,email=email,hashed_password=hash_password(payload.password)); db.add(user); db.commit(); db.refresh(user); return user
 @api.post('/auth/login',response_model=TokenOut)
@@ -36,15 +36,17 @@ def get_product(product_id:int,db:Session=Depends(get_db)):
 def create_product(payload:ProductCreate,db:Session=Depends(get_db),_:User=Depends(require_admin)):
  p=Product(**payload.model_dump()); db.add(p); db.commit(); db.refresh(p); return p
 @api.patch('/products/{product_id}',response_model=ProductOut)
-def update_product(product_id:int,payload:ProductCreate,db:Session=Depends(get_db),_:User=Depends(require_admin)):
+def update_product(product_id:int,payload:ProductUpdate,db:Session=Depends(get_db),_:User=Depends(require_admin)):
  p=db.get(Product,product_id)
  if not p: raise HTTPException(404,'Producto no encontrado')
- for k,v in payload.model_dump().items(): setattr(p,k,v)
+ for k,v in payload.model_dump(exclude_unset=True).items(): setattr(p,k,v)
  db.commit(); db.refresh(p); return p
 @api.delete('/products/{product_id}',status_code=204)
 def delete_product(product_id:int,db:Session=Depends(get_db),_:User=Depends(require_admin)):
  p=db.get(Product,product_id)
  if not p: raise HTTPException(404,'Producto no encontrado')
+ if db.scalar(select(OrderItem.id).where(OrderItem.product_id==product_id).limit(1)):
+  raise HTTPException(409,'No se puede eliminar: el producto pertenece a pedidos existentes. Puedes dejar sus existencias en cero.')
  db.delete(p); db.commit()
 @api.post('/orders/checkout',response_model=OrderOut,status_code=201)
 def create_order(payload:CheckoutIn,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
@@ -52,6 +54,10 @@ def create_order(payload:CheckoutIn,db:Session=Depends(get_db),user:User=Depends
 @api.get('/orders/me',response_model=list[OrderOut])
 def my_orders(db:Session=Depends(get_db),user:User=Depends(get_current_user)):
  stmt=select(Order).options(selectinload(Order.items)).where(Order.user_id==user.id).order_by(Order.id.desc())
+ return db.scalars(stmt).all()
+@api.get('/admin/orders',response_model=list[OrderOut])
+def admin_orders(db:Session=Depends(get_db),_:User=Depends(require_admin)):
+ stmt=select(Order).options(selectinload(Order.items)).order_by(Order.id.desc())
  return db.scalars(stmt).all()
 @api.get('/admin/summary')
 def admin_summary(db:Session=Depends(get_db),_:User=Depends(require_admin)):
