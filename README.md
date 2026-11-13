@@ -149,14 +149,36 @@ Vite mantiene la actualización automática del frontend cuando guardas cambios 
 
 ### 6. Verificar que frontend y backend se comunican
 
-1. Abre la tienda y comprueba que el catálogo carga los productos desde `GET /api/products`.
-2. Abre Swagger en `/docs` y ejecuta `GET /api/products`; debe devolver los mismos productos.
-3. Registra un cliente desde la tienda e inicia sesión.
-4. Agrega productos al carrito y realiza una compra.
-5. Consulta el historial del cliente y verifica que el stock haya disminuido.
-6. Ingresa como administrador y revisa el pedido y las métricas.
+La prueba debe confirmar una petición real del navegador al backend, no solamente que las dos páginas abren.
 
-Si la tienda muestra productos de demostración pese a que FastAPI está detenido, recuerda que el frontend incluye un catálogo visual de respaldo. Para demostrar la integración real, verifica que el backend esté activo y que `GET /api/products` responda correctamente.
+**A. Comprobar la petición desde React**
+
+1. Abre la tienda en el puerto 5173.
+2. Abre las herramientas de desarrollador del navegador (`F12`) y entra en **Network → Fetch/XHR**.
+3. Recarga la tienda.
+4. Busca una petición a `/api/products`. La URL debe apuntar al dominio del puerto 8000.
+5. Selecciona la petición y comprueba que el estado sea **200 OK** y que la respuesta sea un JSON con productos.
+
+**B. Comparar la respuesta de FastAPI**
+
+Abre Swagger en `/docs`, despliega `GET /api/products`, pulsa **Try it out** y luego **Execute**. Debe responder `200` con el catálogo que utiliza la tienda.
+
+También puedes comprobarlo desde una terminal del Codespace:
+
+```bash
+curl -i http://localhost:8000/api/products
+```
+
+**C. Comprobar autenticación y persistencia**
+
+1. Inicia sesión con la cuenta de administrador indicada en la sección de credenciales.
+2. Registra un cliente nuevo desde la interfaz y utiliza la contraseña que acabas de definir.
+3. Inicia sesión como cliente, agrega productos al carrito y realiza una compra.
+4. Consulta el historial del cliente y comprueba que el pedido aparece.
+5. Recarga el catálogo o vuelve a consultar `GET /api/products`: el stock del producto comprado debe reflejar el descuento.
+6. Entra como administrador y comprueba que el pedido aparece en el panel administrativo.
+
+Si la tienda muestra productos de demostración pese a que FastAPI está detenido, recuerda que el frontend incluye un catálogo visual de respaldo. Por eso, la evidencia importante es la petición `/api/products` en Network con respuesta `200` desde el puerto 8000.
 
 ## Base de datos: SQLite en Codespaces
 
@@ -174,13 +196,23 @@ Como el backend se inicia desde la carpeta `backend/`, el archivo se guarda en `
 - El archivo de base de datos permanece en el almacenamiento del Codespace cuando este se detiene y se vuelve a iniciar. No elimines el Codespace ni el archivo si quieres conservar los datos de la demostración.
 - SQLite es apropiado para esta demostración académica de un solo entorno; para un sistema con múltiples instancias o carga concurrente elevada conviene usar PostgreSQL.
 
-## Credenciales de demostración
+## Usuarios y credenciales de demostración
 
-- Administrador: `admin@nexoshop.local`
-- Contraseña inicial: `Admin123!`
-- Cliente: puedes registrarlo desde la interfaz.
+La base de datos SQLite se crea dentro del Codespace. El script `python -m app.seed_admin` crea el administrador y los productos de ejemplo si todavía no existen.
 
-Son credenciales de demostración, no deben reutilizarse en un sistema público real. Cambia `SECRET_KEY` y las credenciales antes de cualquier despliegue real.
+| Tipo de usuario | Correo / usuario | Contraseña |
+|---|---|---|
+| Administrador | `admin@nexoshop.local` | `Admin123!` (contraseña inicial del seed) |
+| Cliente | El correo elegido al registrarse en la tienda | La contraseña definida durante el registro |
+
+**Importante sobre las contraseñas:**
+
+- El administrador anterior es la cuenta inicial definida en `backend/app/seed_admin.py`. El script no restablece la contraseña si ese correo ya existe en la base de datos; si la cuenta fue creada anteriormente con otra contraseña, la contraseña inicial podría no funcionar.
+- Los clientes no tienen una contraseña predeterminada: cada uno crea su propia cuenta desde la tienda.
+- Las contraseñas se almacenan como hashes Argon2 en la columna `hashed_password`; no se guardan en texto plano. Por seguridad, no es posible consultar ni recuperar las contraseñas originales desde SQLite.
+- Si necesitas otra cuenta de prueba, regístrala desde la interfaz. Para probar el rol administrativo utiliza únicamente la cuenta sembrada por el proyecto.
+
+Estas credenciales son exclusivamente para la demostración académica. No reutilices la contraseña de ejemplo en otros servicios ni en un entorno real.
 
 ## Docker opcional
 
