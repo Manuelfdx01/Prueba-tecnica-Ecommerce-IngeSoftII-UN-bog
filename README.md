@@ -331,6 +331,17 @@ La lógica de aplicación depende de la abstracción ProductRepository. La imple
 
 Así, el servicio puede probarse con un repositorio falso y la persistencia puede cambiarse sin reescribir las reglas del catálogo.
 
+**Ejemplo de implementación del contrato y del servicio:**
+
+    class ProductService:
+        def __init__(self, repository: ProductRepository):
+            self._repository = repository
+
+        def list_products(self, query=None, category=None):
+            return self._repository.list(query, category)
+
+La clase recibe una abstracción y delega la consulta. No importa ni instancia SqlAlchemyProductRepository.
+
 ### 3. Aplicación de DRY (Don't Repeat Yourself)
 
 - La autenticación y autorización se centralizan en get_current_user y require_admin.
@@ -367,7 +378,8 @@ Los componentes llaman api.getProducts() o api.checkout(...); no necesitan repet
     ├── services/
     │   └── api.js
     ├── hooks/
-    │   └── useCart.js
+    │   ├── useCart.js
+    │   └── useSession.js
     ├── App.jsx
     └── main.jsx
 
