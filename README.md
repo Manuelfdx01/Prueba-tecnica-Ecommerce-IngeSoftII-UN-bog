@@ -50,6 +50,37 @@ npm run dev
 ```
 Tienda: http://localhost:5173
 
+## Ejecución en GitHub Codespaces
+
+Para el Codespace configurado para esta demostración, se incluyen ejemplos de entorno con las direcciones de los puertos reenviados. Desde la raíz del repositorio, copia los archivos:
+
+```bash
+cp backend/.env.codespaces.example backend/.env
+cp frontend/.env.codespaces.example frontend/.env
+```
+
+En una terminal, prepara y ejecuta el backend:
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+alembic upgrade head
+python -m app.seed_admin
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+En una segunda terminal, ejecuta el frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev -- --host 0.0.0.0
+```
+
+Abre los puertos 5173 (tienda) y 8000 (API) desde la pestaña **Ports** de Codespaces. Si Codespaces genera direcciones distintas al crear otro entorno, actualiza `VITE_API_URL` en `frontend/.env` y `CORS_ORIGINS` en `backend/.env` con las nuevas direcciones. Después reinicia ambos servidores. Los archivos `.env` son locales y están excluidos de Git; los archivos `.env.codespaces.example` son plantillas versionadas para este Codespace.
+
 ## Credenciales de demostración
 - Administrador: admin@nexoshop.local
 - Contraseña inicial: Admin123!
