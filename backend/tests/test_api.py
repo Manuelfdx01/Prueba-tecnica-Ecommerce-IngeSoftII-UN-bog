@@ -30,5 +30,5 @@ def test_checkout_rejects_insufficient_stock_and_preserves_stock():
  with SessionLocal() as db: assert db.get(Product,pid).stock==1
  response=client.post('/api/orders/checkout',headers=headers,json={'items':[{'product_id':pid,'quantity':1}]})
  assert response.status_code==201
- assert response.json()['total']==1000
+ assert response.json()['total']=='1000.00'
  with SessionLocal() as db: assert db.get(Product,pid).stock==0
