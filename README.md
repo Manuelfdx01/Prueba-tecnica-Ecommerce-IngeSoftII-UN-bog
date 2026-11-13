@@ -183,7 +183,7 @@ Los principales recursos expuestos por el backend son:
 | GET | `/api/admin/summary` | Métricas administrativas |
 | GET | `/api/admin/orders` | Consulta global de pedidos (administrador) |
 
-La especificación OpenAPI y la documentación interactiva de los endpoints se generan automáticamente mediante FastAPI y están disponibles en [Swagger UI] (si el backend está activo).
+La especificación OpenAPI y la documentación interactiva de los endpoints se generan automáticamente mediante FastAPI y están disponibles en [Swagger UI](https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/docs) cuando el backend está activo.
 
 ## Migraciones y pruebas automatizadas
 
