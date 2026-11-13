@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {ShoppingBag,Search,Plus,Minus,Trash2,X,ShieldCheck,LogIn,LogOut,PackageCheck,LayoutDashboard,ClipboardList,Box,RefreshCw,Edit3,ChevronRight} from 'lucide-react';
-const API=import.meta.env.VITE_API_URL||'http://localhost:8000/api';
+const API_BASE=(import.meta.env.VITE_API_URL||'http://localhost:8000/api').trim().replace(/\\/+$/,'');
+const API=API_BASE.endsWith('/api')?API_BASE:`${API_BASE}/api`;
 const money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(n)||0);
 const blank={name:'',description:'',price:'',stock:'',category:'General',image_url:''};
 const demo=[{id:1,name:'Audífonos Studio',description:'Sonido envolvente para tu día.',price:189900,stock:12,category:'Tecnología',image_url:'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=900'},{id:2,name:'Reloj Minimal',description:'Diseño limpio para cualquier ocasión.',price:129900,stock:8,category:'Accesorios',image_url:'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=900'},{id:3,name:'Mochila Urbana',description:'Espacio y comodidad para moverte.',price:159900,stock:5,category:'Accesorios',image_url:'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=900'}];
