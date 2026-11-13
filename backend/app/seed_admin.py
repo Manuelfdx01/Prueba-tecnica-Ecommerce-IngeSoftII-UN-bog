@@ -67,6 +67,5 @@ def seed_database():
         db.commit()
 
 
-if __name__ == "__main__":
-    seed_database()
-    print("Datos demo listos.")
+seed_database()
+print("Datos demo listos.")
