@@ -141,99 +141,31 @@ Para ejecutar el proyecto sin contenedores se requiere:
 
 Para la ejecución contenerizada se requiere Docker y Docker Compose.
 
-## Ejecución en GitHub Codespaces
+## Reiniciar el proyecto en GitHub Codespaces
 
-Esta es la forma recomendada de iniciar el proyecto en el entorno de desarrollo del repositorio. No requiere contratar hosting ni utilizar una base de datos administrada externa: el backend se ejecuta en Codespaces con SQLite y el frontend se comunica con la API mediante los puertos reenviados del mismo Codespace.
+Si el proyecto ya está configurado en tu Codespace (entorno virtual, dependencias y archivos `.env`) y las URLs de los puertos ya están establecidas, **no necesitas configurarlo nuevamente**. Cada vez que quieras volver a utilizar NexoShop:
 
-### 1. Abrir el Codespace
+1. Abre el mismo Codespace desde GitHub: **Code → Codespaces**. Si estaba detenido, espera a que termine de iniciar.
+2. Abre una terminal y ejecuta el backend:
 
-1. Abre el repositorio en GitHub y selecciona **Code → Codespaces**.
-2. Inicia el Codespace existente o crea uno nuevo desde la rama `main`.
-3. Abre una terminal integrada en VS Code.
+   ```bash
+   cd backend
+   source .venv/bin/activate
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
 
-Verifica que estás trabajando en la rama principal:
+3. Abre una segunda terminal y ejecuta el frontend:
 
-```bash
-git branch --show-current
-```
+   ```bash
+   cd frontend
+   npm run dev -- --host 0.0.0.0
+   ```
 
-Si necesitas actualizar el entorno con la versión más reciente de `main`, primero revisa que no tengas cambios locales pendientes con `git status`. Si el árbol de trabajo está limpio, ejecuta:
+4. En la pestaña **Ports** de VS Code, comprueba que estén disponibles los puertos `8000` (FastAPI) y `5173` (Vite). Abre la URL del puerto `5173` para entrar a la tienda.
 
-```bash
-git pull origin main
-```
+**Eso es todo:** no hace falta crear otro Codespace, volver a instalar dependencias, copiar los archivos `.env`, ejecutar las migraciones ni cargar nuevamente los datos iniciales cada vez que reanudes el entorno. Los archivos de configuración y la base SQLite permanecen en el mismo Codespace.
 
-### 2. Preparar y ejecutar el backend
-
-Desde la raíz del repositorio:
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-cp .env.codespaces.example .env
-```
-
-Revisa el archivo `.env` y confirma que `DATABASE_URL` apunte a SQLite y que `CORS_ORIGINS` contenga el origen del frontend que aparece en la pestaña **Ports** de Codespaces. Si la URL reenviada de tu Codespace es diferente a la del archivo de ejemplo, actualízala.
-
-Aplica las migraciones y carga los datos de demostración:
-
-```bash
-alembic upgrade head
-python -m app.seed_admin
-```
-
-Inicia FastAPI:
-
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-El backend queda escuchando en el puerto `8000`. Mantén esta terminal abierta.
-
-### 3. Preparar y ejecutar el frontend
-
-Abre una segunda terminal desde la raíz del repositorio:
-
-```bash
-cd frontend
-npm install
-cp .env.codespaces.example .env
-```
-
-Comprueba que `VITE_API_URL` tenga la URL reenviada del puerto 8000, terminada en `/api`. Por ejemplo:
-
-```env
-VITE_API_URL=https://<tu-codespace>-8000.app.github.dev/api
-```
-
-Inicia Vite:
-
-```bash
-npm run dev -- --host 0.0.0.0
-```
-
-El frontend queda escuchando en el puerto `5173`. Mantén también esta terminal abierta.
-
-### 4. Configurar y abrir los puertos
-
-En la pestaña **Ports** de VS Code:
-
-| Puerto | Servicio | Uso |
-|---|---|---|
-| `8000` | FastAPI | API REST y documentación |
-| `5173` | Vite | Aplicación web |
-
-Abre la URL reenviada del puerto `5173` para usar la tienda. Para verificar el backend, abre la URL del puerto `8000` y añade `/docs` para Swagger UI o consulta `/health`.
-
-Los puertos pueden mantenerse como **Private** para uso personal. Si necesitas que otra persona pruebe la aplicación, cambia la visibilidad del puerto correspondiente a **Public** solo cuando sea necesario y comparte las URLs generadas por Codespaces.
-
-**Importante:** los dominios `.app.github.dev` dependen del Codespace y del reenvío de puertos. Si recreas el Codespace o cambia la URL, actualiza `VITE_API_URL` en el frontend y `CORS_ORIGINS` en el backend con los nuevos orígenes. Reinicia ambos servidores después de modificar los archivos `.env`, porque Vite y la configuración de FastAPI leen esas variables al iniciar.
-
-### 5. Detener y reanudar
-
-Para detener los servidores, usa `Ctrl + C` en cada terminal. Esto no elimina el archivo SQLite ni los cambios del repositorio. Para volver a trabajar, abre el mismo Codespace y ejecuta nuevamente los comandos de inicio del backend y frontend; no necesitas crear otro entorno cada vez.
+Para detener el proyecto, presiona `Ctrl + C` en cada terminal. Para volver a iniciarlo, repite únicamente los pasos 2 y 3. Si modificas las variables de entorno o cambia alguna URL de los puertos, revisa `VITE_API_URL` en el frontend y `CORS_ORIGINS` en el backend, y reinicia ambos servidores.
 
 ## Configuración y ejecución
 
