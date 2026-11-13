@@ -1,10 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
+import {api} from './services/api';
 
 import {ShoppingBag,Search,Plus,Minus,Trash2,X,ShieldCheck,LogIn,LogOut,PackageCheck,LayoutDashboard,ClipboardList,Box,RefreshCw,Edit3,ChevronRight} from 'lucide-react';
-
-const API_BASE=(import.meta.env.VITE_API_URL||'http://localhost:8000/api').trim().replace(/\/+$/,'');
-
-const API=API_BASE.endsWith('/api')?API_BASE:`${API_BASE}/api`;
 
 const money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(n)||0);
 
@@ -18,23 +15,51 @@ export default function App(){
 
  const headers=useMemo(()=>token?{Authorization:'Bearer '+token}:{},[token]);
 
- async function load(){try{const r=await fetch(API+'/products');
-if(!r.ok)throw Error();
-setProducts(await r.json())}catch{setProducts(demo)}}
+ async function load() {
+    try {
+      setProducts(await api.getProducts());
+    } catch {
+      setProducts(demo);
+    }
+  }
 
-async function loadAdmin(){if(!token||user?.role!=='admin')return;
-try{const [s,o]=await Promise.all([fetch(API+'/admin/summary',{headers}),fetch(API+'/admin/orders',{headers})]);
-if(s.ok)setSummary(await s.json());
-if(o.ok)setOrders(await o.json())}catch{setNotice('No fue posible cargar el panel administrativo')}}
+  async function loadAdmin() {
+    if (!token || user?.role !== 'admin') return;
 
-async function loadOrders(){if(!token)return;
-try{const r=await fetch(API+'/orders/me',{headers});
-if(r.ok)setOrders(await r.json())}catch{}}
- useEffect(()=>{load()},[]);
+    try {
+      const [adminSummary, adminOrders] = await Promise.all([
+        api.getAdminSummary(token),
+        api.getAdminOrders(token),
+      ]);
+      setSummary(adminSummary);
+      setOrders(adminOrders);
+    } catch {
+      setNotice('No fue posible cargar el panel administrativo');
+    }
+  }
 
- useEffect(()=>{if(token){fetch(API+'/auth/me',{headers}).then(r=>r.ok?r.json():null).then(u=>{if(u){setUser(u);
-localStorage.setItem('nexo_user',JSON.stringify(u))}else logout()}).catch(()=>{});
-}},[token,headers]);
+  async function loadOrders() {
+    if (!token) return;
+
+    try {
+      setOrders(await api.getMyOrders(token));
+    } catch {
+      setNotice('No fue posible cargar tus pedidos');
+    }
+  }
+
+  useEffect(()=>{load()},[]);
+
+ useEffect(() => {
+    if (!token) return;
+
+    api.getCurrentUser(token)
+      .then((currentUser) => {
+        setUser(currentUser);
+        localStorage.setItem('nexo_user', JSON.stringify(currentUser));
+      })
+      .catch(() => logout());
+  }, [token]);
 
  useEffect(()=>{if(notice){const t=setTimeout(()=>setNotice(''),3500);
 return()=>clearTimeout(t)}},[notice]);
@@ -52,33 +77,60 @@ setNotice('Producto agregado al carrito')}
 
 function qty(id,d){setCart(old=>old.map(p=>p.id===id?{...p,quantity:Math.max(1,Math.min(p.stock,p.quantity+d))}:p))}
 
-async function authSubmit(e){e.preventDefault();
-setBusy(true);
-try{const path=mode==='login'?'/auth/login':'/auth/register';
-const opts=mode==='login'?{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({username:form.email,password:form.password})}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)};
-const r=await fetch(API+path,opts),data=await r.json();
-if(!r.ok)throw Error(data.detail||'No fue posible continuar');
-if(mode==='register'){setMode('login');
-setNotice('Cuenta creada. Ahora inicia sesión.')}else{localStorage.setItem('nexo_token',data.access_token);
-localStorage.setItem('nexo_user',JSON.stringify(data.user));
-setToken(data.access_token);
-setUser(data.user);
-setAuth(false);
-setNotice('¡Hola, '+data.user.name+'!')}}catch(err){setNotice(err.message)}finally{setBusy(false)}}
+async function authSubmit(e) {
+    e.preventDefault();
+    setBusy(true);
 
-async function checkout(){if(!token){setAuth(true);
-setDrawer(false);
-setNotice('Inicia sesión para finalizar tu compra');
-return}setBusy(true);
-try{const r=await fetch(API+'/orders/checkout',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({items:cart.map(p=>({product_id:p.id,quantity:p.quantity})),payment_method:'simulated'})}),data=await r.json();
-if(!r.ok)throw Error(data.detail||'No se pudo completar el pedido');
-setCart([]);
-setDrawer(false);
-setNotice('¡Compra confirmada! Pedido #'+data.id);
-await load()}catch(err){setNotice(err.message);
-await load()}finally{setBusy(false)}}
+    try {
+      if (mode === 'register') {
+        await api.register(form);
+        setMode('login');
+        setNotice('Cuenta creada. Ahora inicia sesión.');
+        return;
+      }
 
-function logout(){localStorage.removeItem('nexo_token');
+      const data = await api.login(form.email, form.password);
+      localStorage.setItem('nexo_token', data.access_token);
+      localStorage.setItem('nexo_user', JSON.stringify(data.user));
+      setToken(data.access_token);
+      setUser(data.user);
+      setAuth(false);
+      setNotice('¡Hola, ' + data.user.name + '!');
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function checkout() {
+    if (!token) {
+      setAuth(true);
+      setDrawer(false);
+      setNotice('Inicia sesión para finalizar tu compra');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const items = cart.map((product) => ({
+        product_id: product.id,
+        quantity: product.quantity,
+      }));
+      const order = await api.checkout(items, token);
+      setCart([]);
+      setDrawer(false);
+      setNotice('¡Compra confirmada! Pedido #' + order.id);
+      await load();
+    } catch (error) {
+      setNotice(error.message);
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function logout(){localStorage.removeItem('nexo_token');
 localStorage.removeItem('nexo_user');
 setToken('');
 setUser(null);
@@ -89,24 +141,43 @@ function editProduct(p){setEditing(p.id);
 setProductForm({name:p.name,description:p.description,price:String(p.price),stock:String(p.stock),category:p.category,image_url:p.image_url||''});
 window.scrollTo({top:0,behavior:'smooth'})}
 
-async function saveProduct(e){e.preventDefault();
-setBusy(true);
-try{const r=await fetch(API+(editing?'/products/'+editing:'/products'),{method:editing?'PATCH':'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({...productForm,price:Number(productForm.price),stock:Number(productForm.stock)})});
-const d=await r.json();
-if(!r.ok)throw Error(d.detail||'No fue posible guardar el producto');
-setNotice(editing?'Producto actualizado':'Producto creado');
-setProductForm(blank);
-setEditing(null);
-await load();
-await loadAdmin()}catch(err){setNotice(err.message)}finally{setBusy(false)}}
+async function saveProduct(e) {
+    e.preventDefault();
+    setBusy(true);
 
-async function deleteProduct(id){if(!window.confirm('¿Seguro que deseas eliminar este producto?'))return;
-try{const r=await fetch(API+'/products/'+id,{method:'DELETE',headers});
-if(!r.ok){const d=await r.json();
-throw Error(d.detail||'No fue posible eliminar')}setNotice('Producto eliminado');
-await load();
-await loadAdmin()}catch(err){setNotice(err.message)}}
- return (
+    try {
+      const payload = {
+        ...productForm,
+        price: Number(productForm.price),
+        stock: Number(productForm.stock),
+      };
+      await api.saveProduct(payload, editing, token);
+      setNotice(editing ? 'Producto actualizado' : 'Producto creado');
+      setProductForm(blank);
+      setEditing(null);
+      await load();
+      await loadAdmin();
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteProduct(id) {
+    if (!window.confirm('¿Seguro que deseas eliminar este producto?')) return;
+
+    try {
+      await api.deleteProduct(id, token);
+      setNotice('Producto eliminado');
+      await load();
+      await loadAdmin();
+    } catch (error) {
+      setNotice(error.message);
+    }
+  }
+
+  return (
     <div className="shell">
  <header>
 <a className="brand" href="#" onClick={()=>setView('shop')}>
