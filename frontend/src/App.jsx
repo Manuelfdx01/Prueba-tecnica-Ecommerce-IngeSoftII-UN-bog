@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState} from 'react';
 import {ShoppingBag,Search,Plus,Minus,Trash2,X,ShieldCheck,LogIn,LogOut,PackageCheck,LayoutDashboard,ClipboardList,Box,RefreshCw,Edit3,ChevronRight} from 'lucide-react';
-const API_BASE=(import.meta.env.VITE_API_URL||'http://localhost:8000/api').trim().replace(/\\/+$/,'');
+const API_BASE=(import.meta.env.VITE_API_URL||'http://localhost:8000/api').trim().replace(/\/+$/,'');
 const API=API_BASE.endsWith('/api')?API_BASE:`${API_BASE}/api`;
 const money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(n)||0);
 const blank={name:'',description:'',price:'',stock:'',category:'General',image_url:''};
