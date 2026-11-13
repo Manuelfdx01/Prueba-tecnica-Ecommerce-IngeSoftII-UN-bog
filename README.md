@@ -97,6 +97,23 @@ Si GitHub asigna otras direcciones a un Codespace nuevo, actualiza:
 
 Después de modificar `.env`, reinicia los servidores para que tomen la configuración.
 
+**Valor correcto para el Codespace de esta demostración:**
+
+```env
+VITE_API_URL=https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/api
+```
+
+No agregues una barra `/` al final: `App.jsx` concatena `/products` a `VITE_API_URL`, por lo que la solicitud debe quedar exactamente como `https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/api/products`. Si la variable termina en `/`, se construye una URL con `//products` y puede producir un `404` según la ruta recibida.
+
+**Si `GET /api/products` responde 200 con `curl` pero el navegador muestra 404:**
+
+1. Revisa el valor activo con `cat frontend/.env`.
+2. Corrige `VITE_API_URL` con el valor anterior.
+3. Detén Vite con `Ctrl+C` en su terminal y vuelve a iniciarlo desde `frontend/` con `npm run dev -- --host 0.0.0.0`; Vite lee las variables `.env` al arrancar.
+4. En DevTools → Network → Fetch/XHR, confirma que la petición sea `GET https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/api/products` y tenga estado `200`.
+
+La plantilla versionada `frontend/.env.codespaces.example` ya incluye la ruta `/api` correcta. El archivo `frontend/.env` es configuración local del Codespace y puede estar ignorado por Git; comprueba y corrige ese archivo en el Codespace activo.
+
 ### 3. Preparar la base de datos y el administrador
 
 En una terminal:
