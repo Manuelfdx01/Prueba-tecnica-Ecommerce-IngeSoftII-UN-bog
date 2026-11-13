@@ -10,6 +10,13 @@ export function useSession() {
     () => JSON.parse(localStorage.getItem("nexo_user") || "null"),
   );
 
+  const logout = useCallback(() => {
+    localStorage.removeItem("nexo_token");
+    localStorage.removeItem("nexo_user");
+    setToken("");
+    setUser(null);
+  }, []);
+
   useEffect(() => {
     if (!token) {
       setUser(null);
@@ -46,13 +53,6 @@ export function useSession() {
   async function register(payload) {
     return api.register(payload);
   }
-
-  const logout = useCallback(() => {
-    localStorage.removeItem("nexo_token");
-    localStorage.removeItem("nexo_user");
-    setToken("");
-    setUser(null);
-  }, []);
 
   return { token, user, login, register, logout };
 }
