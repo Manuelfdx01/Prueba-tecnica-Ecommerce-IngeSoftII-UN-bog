@@ -13,7 +13,7 @@ const demo=[{id:1,name:'Audífonos Studio',description:'Sonido envolvente para t
 
 
 export default function App(){
- const[products,setProducts]=useState([]),[query,setQuery]=useState(''),[drawer,setDrawer]=useState(false),[auth,setAuth]=useState(false),[mode,setMode]=useState('login'),[form,setForm]=useState({name:'',email:'',password:''})),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[view,setView]=useState('shop'),[summary,setSummary]=useState(null),[orders,setOrders]=useState([]),[productForm,setProductForm]=useState(blank),[editing,setEditing]=useState(null);
+ const[products,setProducts]=useState([]),[query,setQuery]=useState(''),[drawer,setDrawer]=useState(false),[auth,setAuth]=useState(false),[mode,setMode]=useState('login'),[form,setForm]=useState({name:'',email:'',password:''}),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[view,setView]=useState('shop'),[summary,setSummary]=useState(null),[orders,setOrders]=useState([]),[productForm,setProductForm]=useState(blank),[editing,setEditing]=useState(null);
 
  const {items:cart,count,total,add:addToCart,changeQuantity,remove:removeFromCart,clear:clearCart}=useCart();
  const {token,user,login,register,logout}=useSession();
