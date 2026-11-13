@@ -141,6 +141,100 @@ Para ejecutar el proyecto sin contenedores se requiere:
 
 Para la ejecución contenerizada se requiere Docker y Docker Compose.
 
+## Ejecución en GitHub Codespaces
+
+Esta es la forma recomendada de iniciar el proyecto en el entorno de desarrollo del repositorio. No requiere contratar hosting ni utilizar una base de datos administrada externa: el backend se ejecuta en Codespaces con SQLite y el frontend se comunica con la API mediante los puertos reenviados del mismo Codespace.
+
+### 1. Abrir el Codespace
+
+1. Abre el repositorio en GitHub y selecciona **Code → Codespaces**.
+2. Inicia el Codespace existente o crea uno nuevo desde la rama `main).
+3. Abre una terminal integrada en VS Code.
+
+Verifica que estás trabajando en la rama principal:
+
+```bash
+git branch --show-current
+```
+
+Si necesitas actualizar el entorno con la versión más reciente de `main`, primero revisa que no tengas cambios locales pendientes con `git status`. Si el árbol de trabajo está limpio, ejecuta:
+
+```bash
+git pull origin main
+```
+
+### 2. Preparar y ejecutar el backend
+
+Desde la raíz del repositorio:
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.codespaces.example .env
+```
+
+Revisa el archivo `.env` y confirma que `DATABASE_URL` apunte a SQLite y que `CORS_ORIGINS` contenga el origen del frontend que aparece en la pestaña **Ports** de Codespaces. Si la URL reenviada de tu Codespace es diferente a la del archivo de ejemplo, actualízala.
+
+Aplica las migraciones y carga los datos de demostración:
+
+```bash
+alembic upgrade head
+python -m app.seed_admin
+```
+
+Inicia FastAPI:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+El backend queda escuchando en el puerto `8000). Mantén esta terminal abierta.
+
+### 3. Preparar y ejecutar el frontend
+
+Abre una segunda terminal desde la raíz del repositorio:
+
+```bash
+cd frontend
+npm install
+cp .env.codespaces.example .env
+```
+
+Comprueba que `VITE_API_URL` tenga la URL reenviada del puerto 8000, terminada en `/api). Por ejemplo:
+
+```env
+VITE_API_URL=https://<tu-codespace>-8000.app.github.dev/api
+```
+
+Inicia Vite:
+
+```bash
+npm run dev -- --host 0.0.0.0
+```
+
+El frontend queda escuchando en el puerto `5173). Mantén también esta terminal abierta.
+
+### 4. Configurar y abrir los puertos
+
+En la pestaña **Ports** de VS Code:
+
+| Puerto | Servicio | Uso |
+|---|---|---|
+| `8000` | FastAPI | API REST y documentación |
+| `5173` | Vite | Aplicación web |
+
+Abre la URL reenviada del puerto `5173) para usar la tienda. Para verificar el backend, abre la URL del puerto `8000` y añade `/docs) para Swagger UI o consulta `/health).
+
+Los puertos pueden mantenerse como **Private** para uso personal. Si necesitas que otra persona pruebe la aplicación, cambia la visibilidad del puerto correspondiente a **Public** solo cuando sea necesario y comparte las URLs generadas por Codespaces.
+
+**Importante:** los dominios `.app.github.dev` dependen del Codespace y del reenvío de puertos. Si recreas el Codespace o cambia la URL, actualiza `VITE_API_URL) en el frontend y `CORS_ORIGINS) en el backend con los nuevos orígenes. Reinicia ambos servidores después de modificar los archivos `.env), porque Vite y la configuración de FastAPI leen esas variables al iniciar.
+
+### 5. Detener y reanudar
+
+Para detener los servidores, usa `Ctrl + C) en cada terminal. Esto no elimina el archivo SQLite ni los cambios del repositorio. Para volver a trabajar, abre el mismo Codespace y ejecuta nuevamente los comandos de inicio del backend y frontend; no necesitas crear otro entorno cada vez.
+
 ## Configuración y ejecución
 
 ### Backend
@@ -244,20 +338,56 @@ Los principales recursos expuestos por el backend son:
 
 La especificación OpenAPI y la documentación interactiva de los endpoints se generan automáticamente mediante FastAPI y están disponibles en `/docs` cuando el backend está en ejecución.
 
-## Migraciones y pruebas
+## Migraciones y pruebas automatizadas
 
-Las migraciones del esquema se administran con Alembic. Para aplicar las migraciones:
+Las migraciones del esquema se administran con Alembic. Desde la carpeta `backend`, aplica las migraciones con:
 
 ```bash
-cd backend
 alembic upgrade head
 ```
 
-Para ejecutar las pruebas automatizadas:
+### Pruebas de backend
+
+El backend utiliza **pytest** y **FastAPI TestClient**. Los casos automatizados están en `backend/tests/`:
+
+| Archivo | Tipo | Qué comprueba |
+|---|---|---|
+| `test_smoke.py` | Prueba de humo de API | Que `GET /health` responda HTTP 200 y devuelva `{"status": "ok"}`. |
+| `test_api.py` | Pruebas de integración de API | Registro de cliente, inicio de sesión, consulta del usuario autenticado y rechazo (403) de una operación administrativa realizada por un cliente. También verifica el checkout: si no hay inventario suficiente responde 409 y conserva el stock; con stock disponible crea el pedido (201), calcula el total y descuenta las existencias. |
+| `test_product_service.py` | Pruebas unitarias de servicio | Prueba `ProductService` con un repositorio falso, sin conectarse a una base de datos real: consulta y creación delegadas al repositorio, error al consultar un producto inexistente y protección contra eliminar productos que tienen historial de pedidos. |
+
+Para ejecutar todas las pruebas desde Codespaces:
 
 ```bash
+cd backend
+source .venv/bin/activate
 pytest -q
 ```
+
+Estas pruebas cubren endpoints y reglas seleccionadas del catálogo, autenticación, permisos y checkout. No representan una cobertura exhaustiva de todos los módulos ni sustituyen pruebas de carga, seguridad o aceptación de usuario.
+
+### Validación de frontend
+
+El frontend actualmente no tiene un framework ni una suite de pruebas unitarias o de componentes configurada en `package.json`. La validación automatizada de frontend en CI ejecuta `npm run build), que usa Vite y esbuild para transformar los módulos JSX/JavaScript y generar el paquete de producción. Esto detecta, entre otros problemas, errores de sintaxis e importaciones que impiden compilar la aplicación, pero **no equivale a pruebas funcionales de interacción en el navegador**.
+
+Para ejecutar la misma validación localmente:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+### Integración continua con GitHub Actions
+
+El workflow `.github/workflows/ci.yml` ejecuta dos trabajos independientes cuando hay un push a `main` o a ramas `feat/**), y cuando se abre o actualiza un Pull Request dirigido a `main`:
+
+- **backend:** configura Python 3.12, instala `backend/requirements-dev.txt`, aplica las migraciones con `alembic upgrade head` y ejecuta `pytest -q).
+- **frontend:** configura Node.js 20, instala dependencias con `npm install` y ejecuta `npm run build).
+
+Un resultado exitoso de CI significa que las pruebas automatizadas definidas para backend finalizaron correctamente y que el frontend pudo compilarse para producción. No significa que exista una suite de pruebas de interfaz de usuario para frontend.
+
+### Generar migraciones
 
 Para generar una migración a partir de cambios en los modelos:
 
@@ -385,7 +515,7 @@ Los componentes llaman api.getProducts() o api.checkout(...); no necesitan repet
 
 ### 5. Pruebas automatizadas relacionadas con SOLID
 
-Las pruebas de API existentes cubren registro, autenticación, autorización y checkout con control de inventario. Además, backend/tests/test_product_service.py prueba el servicio del catálogo con un repositorio falso, sin depender de una base de datos real.
+Las pruebas automatizadas existentes se describen en la sección **Migraciones y pruebas automatizadas**. Incluyen pruebas de humo y de integración de API, además de pruebas unitarias del servicio de productos con un repositorio falso.
 
 Escenarios del servicio:
 
@@ -399,12 +529,12 @@ Ejecutar desde Codespaces:
     cd backend
     pytest -q
 
-Comprobar el frontend:
+Validar la compilación del frontend:
 
     cd frontend
     npm run build
 
-Las pruebas y la compilación deben ejecutarse en el entorno antes de integrar los cambios. La inclusión de pruebas en el repositorio no equivale a afirmar que ya pasaron.
+La compilación de Vite es una comprobación de construcción, no una suite de pruebas funcionales de frontend.
 
 ### 6. Sustentación: cómo demostrar SOLID
 
