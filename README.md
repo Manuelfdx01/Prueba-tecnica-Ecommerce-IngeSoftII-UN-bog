@@ -4,6 +4,22 @@ NexoShop es una aplicación web de comercio electrónico desarrollada como proye
 
 El proyecto implementa los procesos principales de una tienda en línea: consulta de catálogo, autenticación de usuarios, gestión del carrito, generación de pedidos, control de inventario y administración de productos y órdenes.
 
+
+## Enlaces de acceso
+
+Los siguientes enlaces corresponden al entorno de ejecución del proyecto en GitHub Codespaces:
+
+| Recurso | Enlace | Descripción |
+|---|---|---|
+| **Frontend** | [NexoShop – Tienda](https://crispy-waddle-4jw95g5p449r37x7v-5173.app.github.dev/) | Interfaz web de la tienda. |
+| **Backend** | [API FastAPI](https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/) | Servicio backend. |
+| **Swagger UI** | [Documentación interactiva](https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/docs) | Exploración y ejecución de los endpoints de la API. |
+| **OpenAPI** | [Especificación JSON](https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/openapi.json) | Esquema de la API en formato OpenAPI. |
+| **Health check** | [Estado del backend](https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/health) | Verificación básica de disponibilidad del servicio. |
+
+> **Disponibilidad:** estos enlaces pertenecen a un Codespace específico, no a un servicio de hosting permanente. Para acceder a ellos, el Codespace debe estar activo y los servidores frontend y backend deben estar ejecutándose. El acceso desde otros usuarios o dispositivos requiere que los puertos correspondientes estén compartidos con los permisos adecuados.
+
+
 ## Funcionalidades
 
 ### Experiencia de compra
