@@ -103,7 +103,7 @@ Después de modificar `.env`, reinicia los servidores para que tomen la configur
 VITE_API_URL=https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/api
 ```
 
-No agregues una barra `/` al final: `App.jsx` concatena `/products` a `VITE_API_URL`, por lo que la solicitud debe quedar exactamente como `https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/api/products`. Si la variable termina en `/`, se construye una URL con `//products` y puede producir un `404` según la ruta recibida.
+La implementación de `App.jsx` normaliza la URL base: elimina las barras finales y agrega `/api` si todavía no está presente. Así, tanto una variable con el dominio raíz como una variable terminada en `/api/` se convierten en una base correcta, y las solicitudes usan rutas como `https://crispy-waddle-4jw95g5p449r37x7v-8000.app.github.dev/api/products`. Se recomienda mantener el valor explícito con `/api` y sin barra final para que la configuración sea fácil de verificar.
 
 **Si `GET /api/products` responde 200 con `curl` pero el navegador muestra 404:**
 
