@@ -271,149 +271,137 @@ Las migraciones generadas deben revisarse antes de aplicarse.
 
 NexoShop implementa un flujo académico de comercio electrónico con autenticación, autorización por roles, administración de catálogo, pedidos y persistencia relacional. El módulo de pago es una simulación y no está integrado con entidades financieras ni pasarelas de pago. La configuración de seguridad y despliegue está orientada al entorno de desarrollo y demostración; una puesta en producción requeriría, entre otros aspectos, gestión de secretos, políticas de seguridad reforzadas, monitorización, copias de seguridad y configuración de infraestructura apropiada.
 
-## Buenas prácticas de desarrollo, SOLID y DRY
+## Buenas prácticas, SOLID y DRY
 
-Esta sección explica las prácticas identificables en la implementación actual y presenta ejemplos del código. Es importante distinguir entre principios aplicados en partes concretas y una implementación completa: la arquitectura tiene separación de responsabilidades en el backend, mientras que el componente principal del frontend todavía concentra varias funciones y puede modularizarse más.
+La implementación separa responsabilidades en backend y frontend. Las rutas HTTP actúan como adaptadores de entrada; los servicios contienen reglas de aplicación; los repositorios aíslan el acceso a datos; y los esquemas Pydantic definen contratos de entrada y salida.
+
+SOLID no significa crear interfaces o clases sin necesidad. Se aplica donde reduce acoplamiento y facilita probar o sustituir una implementación. El alcance se demuestra con los ejemplos y pruebas descritos abajo; no se afirma que un software sea perfecto o que no requiera evolución.
 
 ### 1. Buenas prácticas de desarrollo
 
-- **Separación por capas y módulos:** la API, la configuración, la seguridad, las dependencias, los modelos, los esquemas y los servicios se encuentran en módulos diferentes dentro de `backend/app/`.
-- **Validación de entrada:** los esquemas Pydantic definen restricciones de tipos, longitudes, rangos y valores permitidos antes de ejecutar las operaciones.
-- **Validación en el servidor:** el checkout obtiene precios y existencias desde la base de datos; no confía en los valores enviados por el navegador.
-- **Manejo de errores HTTP:** la API comunica situaciones como credenciales incorrectas (401), falta de permisos (403), recursos inexistentes (404), conflictos de inventario (409) y datos inválidos (422).
-- **Persistencia consistente:** el checkout actualiza existencias y crea el pedido en una misma transacción; si ocurre un error, ejecuta rollback.
-- **Seguridad:** las contraseñas se almacenan mediante hashes Argon2, se utilizan tokens JWT y las operaciones administrativas verifican el rol.
-- **Configuración externa:** los parámetros sensibles y de entorno se suministran mediante variables de entorno, no deben quedar escritos directamente en el código.
-- **Control de cambios:** el trabajo se organiza en ramas y Pull Requests para revisar los cambios antes de integrarlos a `main`.
+- **Responsabilidades delimitadas:** los routers se separan por recurso: api/auth.py, api/products.py, api/orders.py y api/admin.py.
+- **Separación de capas:** las rutas traducen HTTP, los servicios ejecutan casos de uso y los repositorios gestionan persistencia.
+- **Validación de entrada:** Pydantic valida tipos, longitudes, rangos y valores permitidos.
+- **Reglas críticas en el servidor:** precios y existencias se consultan en la base de datos durante el checkout; el navegador no determina el precio final.
+- **Consistencia transaccional:** la actualización del inventario y la creación del pedido se confirman en una transacción; un error provoca rollback.
+- **Seguridad:** las contraseñas se almacenan con Argon2, la autenticación usa JWT y las operaciones administrativas exigen el rol correspondiente.
+- **Errores explícitos:** la API responde con códigos HTTP adecuados para validación, autenticación, permisos, recursos inexistentes y conflictos de inventario.
+- **Configuración por entorno:** URL de base de datos, clave de firma y orígenes CORS se parametrizan mediante variables de entorno.
+- **Cambios revisables:** las mejoras se trabajan en ramas y Pull Requests para no mezclar refactorizaciones con main.
 
-**Ejemplo — validación con Pydantic** (`backend/app/schemas.py`):
+### 2. Aplicación de los cinco principios SOLID
 
-```python
-class ProductCreate(BaseModel):
-    name: str = Field(min_length=2, max_length=140)
-    price: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
-    stock: int = Field(ge=0)
-```
+#### S — Single Responsibility Principle (responsabilidad única)
 
-Este esquema evita aceptar nombres demasiado cortos, precios no positivos o existencias negativas. FastAPI utiliza el esquema para validar el cuerpo de la petición y generar respuestas de validación.
+Cada módulo tiene un motivo principal para cambiar:
 
-**Ejemplo — autorización de una operación administrativa** (`backend/app/dependencies.py`):
+- api/products.py: contrato HTTP del catálogo.
+- services/products.py: reglas de aplicación del catálogo.
+- repositories/sqlalchemy_product_repository.py: persistencia de productos con SQLAlchemy.
+- services/orders.py: reglas transaccionales del checkout.
+- En frontend, services/api.js gestiona comunicación HTTP y hooks/useCart.js encapsula el estado y las reglas del carrito. App.jsx actúa como componente de composición de la pantalla.
 
-```python
-def require_admin(
-    user: User = Depends(get_current_user),
-) -> User:
-    if user.role != "admin":
-        raise HTTPException(403, "Se requiere rol administrador")
-    return user
-```
+**Ejemplo:** el endpoint de listado delega el caso de uso al servicio ProductService. La ruta no construye consultas SQL ni conoce cómo se almacenan los productos.
 
-La dependencia centraliza la comprobación del rol y puede reutilizarse en las rutas que requieren permisos administrativos.
+#### O — Open/Closed Principle (abierto/cerrado)
 
-### 2. Principios SOLID
+El servicio de productos trabaja con el contrato ProductRepository, no con una implementación SQLAlchemy concreta. Se puede incorporar otra implementación del repositorio (por ejemplo, para otra base de datos o pruebas) sin reescribir las reglas del servicio. Los nuevos endpoints también se incorporan como routers independientes y se registran en el agregador.
 
-SOLID reúne cinco principios para facilitar el mantenimiento y la evolución del software. En NexoShop se observan aplicaciones parciales y oportunidades de mejora:
+#### L — Liskov Substitution Principle (sustitución de Liskov)
 
-| Principio | Aplicación en el proyecto | Ejemplo |
-|---|---|---|
-| **S — Responsabilidad única** | Hay módulos con responsabilidades diferenciadas: seguridad, configuración, dependencias, modelos, esquemas y servicio de pedidos. | `app/core/security.py` gestiona funciones de seguridad; `app/services/orders.py` contiene el proceso de checkout. |
-| **O — Abierto/cerrado** | Los esquemas de creación y actualización separan los datos de entrada y permiten extender validaciones sin cambiar el modelo de salida. | `ProductCreate` y `ProductUpdate` en `app/schemas.py`. |
-| **L — Sustitución de Liskov** | Los modelos y esquemas mantienen contratos de datos compatibles con las operaciones que los consumen. No hay una jerarquía polimórfica compleja que permita demostrar este principio de forma amplia. | `ProductOut` extiende `ProductCreate` y añade el identificador para representar la salida del producto. |
-| **I — Segregación de interfaces** | Los contratos de entrada y salida se mantienen separados y específicos para cada operación, evitando un único esquema para todos los casos. | `ProductCreate`, `ProductUpdate` y `ProductOut`. |
-| **D — Inversión de dependencias** | Las rutas reciben la sesión de base de datos y el usuario mediante dependencias de FastAPI, en lugar de construirlos directamente dentro de cada endpoint. | `Depends(get_db)`, `Depends(get_current_user)` y `Depends(require_admin)`. |
+Cualquier implementación que cumpla el contrato ProductRepository debe poder sustituir a otra sin romper las expectativas del servicio: listar, consultar, crear, actualizar, verificar historial y eliminar productos con los mismos contratos de retorno y comportamiento.
 
-**Ejemplo — inyección de dependencias**:
+El adaptador real es SqlAlchemyProductRepository; las pruebas utilizan FakeProductRepository, que implementa el mismo contrato para probar el servicio sin conectarse a la base de datos.
 
-```python
-@api.get("/products", response_model=list[ProductOut])
-def list_products(
-    q: str | None = None,
-    db: Session = Depends(get_db),
-):
-    statement = select(Product).order_by(Product.id.desc())
-    if q:
-        statement = statement.where(Product.name.ilike(f"%{q}%"))
-    return db.scalars(statement).all()
-```
+**Ejemplo:** ProductService recibe un repositorio falso en las pruebas y obtiene productos sin saber si la persistencia real es SQLAlchemy o una implementación de prueba. Esto comprueba la sustitución estructural del contrato.
 
-La ruta declara que necesita una sesión, pero la creación y el ciclo de vida de esa sesión corresponden a `get_db`. Esto reduce el acoplamiento con la configuración concreta de la conexión.
+#### I — Interface Segregation Principle (segregación de interfaces)
 
-**Alcance real de SOLID:** estos ejemplos muestran decisiones alineadas con SOLID, pero no significan que todos los módulos cumplan perfectamente los cinco principios. En particular, `backend/app/api/routes.py` todavía agrupa endpoints de varios recursos y el componente `frontend/src/App.jsx` concentra estado, llamadas HTTP y presentación. Una siguiente refactorización puede separar routers por recurso, extraer servicios de aplicación y dividir el frontend en componentes, hooks y un cliente API. Esa separación debe hacerse acompañada de pruebas de regresión.
+El contrato ProductRepository contiene únicamente operaciones necesarias para el caso de uso del catálogo. No obliga al servicio de productos a depender de métodos de usuarios, pagos o reportes. Los esquemas también separan creación, actualización y representación de salida: ProductCreate, ProductUpdate y ProductOut.
 
-### 3. Principio DRY (Don't Repeat Yourself)
+#### D — Dependency Inversion Principle (inversión de dependencias)
 
-DRY busca evitar duplicar reglas o lógica que deban mantenerse sincronizadas. En el proyecto se aplica mediante funciones y dependencias reutilizables:
+La lógica de aplicación depende de la abstracción ProductRepository. La implementación SQLAlchemy se construye en el punto de composición de FastAPI, mediante get_product_service, y se inyecta al router.
 
-- `get_db` centraliza la provisión de sesiones de base de datos.
-- `get_current_user` centraliza la autenticación del usuario.
-- `require_admin` reutiliza la autenticación y añade la regla de autorización administrativa.
-- `checkout` concentra el cálculo del pedido, la validación de inventario y la persistencia transaccional en un servicio invocado por la ruta.
+**Ejemplo conceptual del flujo:**
 
-**Ejemplo — una sola implementación del checkout**:
+- FastAPI ejecuta get_product_service y crea SqlAlchemyProductRepository con la sesión recibida.
+- ProductService recibe el repositorio mediante su constructor.
+- ProductService solo conoce las operaciones definidas por ProductRepository; no conoce SQLAlchemy ni crea sesiones.
 
-```python
-@api.post("/orders/checkout", response_model=OrderOut, status_code=201)
-def create_order(
-    payload: CheckoutIn,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    items = [item.model_dump() for item in payload.items]
-    return checkout(db, user.id, items)
-```
+Así, el servicio puede probarse con un repositorio falso y la persistencia puede cambiarse sin reescribir las reglas del catálogo.
 
-La ruta se limita a adaptar la petición HTTP y delegar la regla de negocio en `checkout`. Así, la lógica de inventario y creación de pedidos no necesita repetirse en el endpoint.
+### 3. Aplicación de DRY (Don't Repeat Yourself)
 
-### 4. Pruebas unitarias y de integración
+- La autenticación y autorización se centralizan en get_current_user y require_admin.
+- El acceso a datos del catálogo se concentra en SqlAlchemyProductRepository.
+- Las reglas del catálogo se implementan una sola vez en ProductService.
+- La lógica de checkout se centraliza en services/orders.py.
+- El frontend utiliza un único cliente HTTP en services/api.js, que normaliza la URL, agrega el token, interpreta errores y expone operaciones específicas.
+- El hook hooks/useCart.js centraliza cálculo de cantidades, subtotal, adición, eliminación y límites por existencias.
 
-El proyecto incluye pruebas automatizadas con `pytest` y `FastAPI TestClient`. Las pruebas existentes verifican flujos de API que involucran varias capas; por ello, es más preciso describirlas como pruebas de integración/API, aunque el requisito de pruebas sea opcional.
+Los componentes llaman api.getProducts() o api.checkout(...); no necesitan repetir la construcción de URLs, encabezados ni manejo común de respuestas.
 
-Actualmente se comprueban, entre otros, estos escenarios:
+### 4. Estructura resultante relevante
 
-- Registro de un cliente y asignación del rol `customer`.
-- Inicio de sesión y consulta del usuario autenticado.
-- Rechazo de una operación administrativa por parte de un cliente (403).
-- Rechazo de un checkout cuando no hay existencias suficientes (409).
-- Conservación del inventario cuando el checkout falla.
-- Creación de un pedido cuando hay existencias y descuento correcto del inventario.
+    backend/app/
+    ├── api/
+    │   ├── auth.py
+    │   ├── products.py
+    │   ├── orders.py
+    │   ├── admin.py
+    │   ├── dependencies.py
+    │   └── routes.py
+    ├── ports/
+    │   └── product_repository.py
+    ├── repositories/
+    │   └── sqlalchemy_product_repository.py
+    ├── services/
+    │   ├── products.py
+    │   └── orders.py
+    ├── core/
+    ├── models/
+    └── schemas.py
 
-**Ejemplo — prueba de permisos** (`backend/tests/test_api.py`):
+    frontend/src/
+    ├── services/
+    │   └── api.js
+    ├── hooks/
+    │   └── useCart.js
+    ├── App.jsx
+    └── main.jsx
 
-```python
-assert response.status_code == 201
-assert response.json()["role"] == "customer"
+### 5. Pruebas automatizadas relacionadas con SOLID
 
-# Un cliente no puede crear productos como administrador.
-assert product_response.status_code == 403
-```
+Las pruebas de API existentes cubren registro, autenticación, autorización y checkout con control de inventario. Además, backend/tests/test_product_service.py prueba el servicio del catálogo con un repositorio falso, sin depender de una base de datos real.
 
-**Ejemplo — prueba de inventario**:
+Escenarios del servicio:
 
-```python
-assert insufficient_stock_response.status_code == 409
+- El servicio consulta productos a través del contrato del repositorio.
+- La creación delega la persistencia en el repositorio.
+- La consulta de un producto inexistente genera ProductNotFoundError.
+- No se permite eliminar productos con historial de pedidos.
 
-with SessionLocal() as db:
-    assert db.get(Product, product_id).stock == 1
-```
+Ejecutar desde Codespaces:
 
-Para ejecutar las pruebas desde la carpeta `backend/` en Codespaces:
+    cd backend
+    pytest -q
 
-```bash
-pytest -q
-```
+Comprobar el frontend:
 
-La existencia de pruebas en el repositorio no implica que se hayan ejecutado en cada entorno. Antes de una entrega se debe ejecutar el comando y registrar el resultado real. También es recomendable ampliar la cobertura con pruebas de actualización y eliminación de productos, acceso administrativo, checkout exitoso, rollback ante errores y validaciones de esquemas.
+    cd frontend
+    npm run build
 
-### 5. Sustentación del desarrollo
+Las pruebas y la compilación deben ejecutarse en el entorno antes de integrar los cambios. La inclusión de pruebas en el repositorio no equivale a afirmar que ya pasaron.
 
-La siguiente estructura permite explicar y demostrar el cumplimiento de los criterios durante una presentación:
+### 6. Sustentación: cómo demostrar SOLID
 
-1. **Arquitectura (1 minuto):** mostrar el recorrido navegador → React/Vite → API FastAPI → SQLAlchemy → SQLite o PostgreSQL. Explicar que el frontend consume la API mediante HTTP/JSON y no accede directamente a la base de datos.
-2. **Buenas prácticas (1 minuto):** ubicar `core/security.py`, `dependencies.py`, `schemas.py`, `models/` y `services/orders.py`. Explicar qué responsabilidad tiene cada módulo.
-3. **SOLID (1–2 minutos):** demostrar la inyección de `get_db`, la separación de esquemas `ProductCreate/ProductUpdate/ProductOut` y la delegación del checkout al servicio. Reconocer que `routes.py` y `App.jsx` aún admiten una separación adicional.
-4. **DRY (1 minuto):** mostrar cómo `get_current_user` y `require_admin` evitan repetir autenticación y autorización, y cómo la ruta de checkout reutiliza el servicio `checkout`.
-5. **Demostración funcional (1–2 minutos):** consultar `GET /api/products` en Swagger, registrar o autenticar un cliente, intentar una operación administrativa para mostrar el 403 y ejecutar un checkout para observar el descuento de inventario.
-6. **Pruebas (1 minuto):** ejecutar `pytest -q` y explicar qué escenarios cubren las pruebas existentes. Presentar la salida real, sin afirmar que las pruebas pasan si no se han ejecutado.
+1. **SRP:** abrir api/products.py, services/products.py y repositories/sqlalchemy_product_repository.py; explicar la diferencia entre HTTP, reglas de aplicación y persistencia.
+2. **OCP:** mostrar que se puede cambiar el repositorio inyectado sin modificar ProductService.
+3. **LSP:** mostrar que FakeProductRepository sustituye al adaptador SQLAlchemy en las pruebas respetando el contrato.
+4. **ISP:** mostrar que ProductRepository expone solo las operaciones del catálogo y que los esquemas de entrada/salida son específicos.
+5. **DIP:** seguir el flujo get_product_service → ProductService → ProductRepository; explicar que el servicio depende de una abstracción.
+6. **DRY:** mostrar el cliente api.js, el hook useCart.js y la reutilización de las dependencias de autenticación.
+7. **Demostración funcional:** consultar productos en Swagger, registrar/autenticar un cliente, verificar el 403 al intentar una operación administrativa y ejecutar un checkout que actualice el inventario.
 
-**Idea central para la sustentación:** NexoShop separa la interfaz, la API y la persistencia; valida las entradas y los permisos en el servidor; centraliza reglas reutilizables y protege la consistencia del inventario mediante transacciones. SOLID y DRY se aplican en decisiones concretas del backend, aunque se reconocen oportunidades de modularización adicional en las rutas y en el frontend.
-
+**Conclusión para la presentación:** NexoShop separa los adaptadores HTTP, los casos de uso y la persistencia. El servicio de catálogo depende de un contrato sustituible, las reglas del carrito y la comunicación HTTP están centralizadas en módulos frontend reutilizables, y las pruebas ejercitan tanto la API como el servicio aislado. La arquitectura evita acoplamientos innecesarios y permite extender cada parte sin modificar las demás cuando el cambio pertenece a una responsabilidad diferente.
