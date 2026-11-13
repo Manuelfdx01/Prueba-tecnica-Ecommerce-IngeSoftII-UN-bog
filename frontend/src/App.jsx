@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useState} from 'react';
 import {api} from './services/api';
 import {useCart} from './hooks/useCart';
 
@@ -14,7 +14,6 @@ const demo=[{id:1,name:'Audífonos Studio',description:'Sonido envolvente para t
 export default function App(){
  const[products,setProducts]=useState([]),[query,setQuery]=useState(''),[drawer,setDrawer]=useState(false),[auth,setAuth]=useState(false),[mode,setMode]=useState('login'),[form,setForm]=useState({name:'',email:'',password:''}),[token,setToken]=useState(()=>localStorage.getItem('nexo_token')||''),[user,setUser]=useState(()=>JSON.parse(localStorage.getItem('nexo_user')||'null')),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[view,setView]=useState('shop'),[summary,setSummary]=useState(null),[orders,setOrders]=useState([]),[productForm,setProductForm]=useState(blank),[editing,setEditing]=useState(null);
 
- const headers=useMemo(()=>token?{Authorization:'Bearer '+token}:{},[token]);
  const {items:cart,count,total,add:addToCart,changeQuantity,remove:removeFromCart,clear:clearCart}=useCart();
 
  async function load() {
