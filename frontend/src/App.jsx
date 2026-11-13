@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useState} from 'react';
 import {api} from './services/api';
+import {useCart} from './hooks/useCart';
 
 import {ShoppingBag,Search,Plus,Minus,Trash2,X,ShieldCheck,LogIn,LogOut,PackageCheck,LayoutDashboard,ClipboardList,Box,RefreshCw,Edit3,ChevronRight} from 'lucide-react';
 
@@ -11,9 +12,10 @@ const demo=[{id:1,name:'Audífonos Studio',description:'Sonido envolvente para t
 
 
 export default function App(){
- const[products,setProducts]=useState([]),[cart,setCart]=useState([]),[query,setQuery]=useState(''),[drawer,setDrawer]=useState(false),[auth,setAuth]=useState(false),[mode,setMode]=useState('login'),[form,setForm]=useState({name:'',email:'',password:''}),[token,setToken]=useState(()=>localStorage.getItem('nexo_token')||''),[user,setUser]=useState(()=>JSON.parse(localStorage.getItem('nexo_user')||'null')),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[view,setView]=useState('shop'),[summary,setSummary]=useState(null),[orders,setOrders]=useState([]),[productForm,setProductForm]=useState(blank),[editing,setEditing]=useState(null);
+ const[products,setProducts]=useState([]),[query,setQuery]=useState(''),[drawer,setDrawer]=useState(false),[auth,setAuth]=useState(false),[mode,setMode]=useState('login'),[form,setForm]=useState({name:'',email:'',password:''}),[token,setToken]=useState(()=>localStorage.getItem('nexo_token')||''),[user,setUser]=useState(()=>JSON.parse(localStorage.getItem('nexo_user')||'null')),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[view,setView]=useState('shop'),[summary,setSummary]=useState(null),[orders,setOrders]=useState([]),[productForm,setProductForm]=useState(blank),[editing,setEditing]=useState(null);
 
  const headers=useMemo(()=>token?{Authorization:'Bearer '+token}:{},[token]);
+ const {items:cart,count,total,add:addToCart,changeQuantity,remove:removeFromCart,clear:clearCart}=useCart();
 
  async function load() {
     try {
@@ -67,15 +69,12 @@ return()=>clearTimeout(t)}},[notice]);
  useEffect(()=>{if(view==='admin')loadAdmin();
 if(view==='orders')loadOrders()},[view,token]);
 
- const count=cart.reduce((a,p)=>a+p.quantity,0),total=cart.reduce((a,p)=>a+Number(p.price)*p.quantity,0),filtered=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(query.toLowerCase()));
+ const filtered=products.filter(p=>(p.name+' '+p.category).toLowerCase().includes(query.toLowerCase()));
 
- function add(p){if(!p.stock){setNotice('Este producto está agotado');
-return}setCart(old=>{const x=old.find(v=>v.id===p.id);
-if(x&&x.quantity>=p.stock){setNotice('No hay más unidades disponibles');
-return old}return x?old.map(v=>v.id===p.id?{...v,quantity:v.quantity+1}:v):[...old,{...p,quantity:1}]});
-setNotice('Producto agregado al carrito')}
-
-function qty(id,d){setCart(old=>old.map(p=>p.id===id?{...p,quantity:Math.max(1,Math.min(p.stock,p.quantity+d))}:p))}
+ function add(product) {
+    const result = addToCart(product);
+    setNotice(result.message);
+  }
 
 async function authSubmit(e) {
     e.preventDefault();
@@ -118,7 +117,7 @@ async function authSubmit(e) {
         quantity: product.quantity,
       }));
       const order = await api.checkout(items, token);
-      setCart([]);
+      clearCart();
       setDrawer(false);
       setNotice('¡Compra confirmada! Pedido #' + order.id);
       await load();
@@ -391,12 +390,12 @@ setProductForm(blank)}}>Cancelar edición</button>}</form>
 <b>{p.name}</b>
 <strong>{money(p.price)}</strong>
 <div className="quantity">
-<button onClick={()=>qty(p.id,-1)}>
+<button onClick={()=>changeQuantity(p.id,-1)}>
 <Minus/>
-</button>{p.quantity}<button onClick={()=>qty(p.id,1)}>
+</button>{p.quantity}<button onClick={()=>changeQuantity(p.id,1)}>
 <Plus/>
 </button>
-<button className="remove" onClick={()=>setCart(old=>old.filter(x=>x.id!==p.id))}>
+<button className="remove" onClick={()=>removeFromCart(p.id)}>
 <Trash2/>
 </button>
 </div>
