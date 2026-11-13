@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../services/api";
 
@@ -32,7 +32,7 @@ export function useSession() {
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [token, logout]);
 
   async function login(email, password) {
     const session = await api.login(email, password);
@@ -47,12 +47,12 @@ export function useSession() {
     return api.register(payload);
   }
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem("nexo_token");
     localStorage.removeItem("nexo_user");
     setToken("");
     setUser(null);
-  }
+  }, []);
 
   return { token, user, login, register, logout };
 }
