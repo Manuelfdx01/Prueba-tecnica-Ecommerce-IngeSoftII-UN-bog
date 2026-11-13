@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {api} from './services/api';
 import {useCart} from './hooks/useCart';
+import {useSession} from './hooks/useSession';
 
 import {ShoppingBag,Search,Plus,Minus,Trash2,X,ShieldCheck,LogIn,LogOut,PackageCheck,LayoutDashboard,ClipboardList,Box,RefreshCw,Edit3,ChevronRight} from 'lucide-react';
 
@@ -12,9 +13,10 @@ const demo=[{id:1,name:'Audífonos Studio',description:'Sonido envolvente para t
 
 
 export default function App(){
- const[products,setProducts]=useState([]),[query,setQuery]=useState(''),[drawer,setDrawer]=useState(false),[auth,setAuth]=useState(false),[mode,setMode]=useState('login'),[form,setForm]=useState({name:'',email:'',password:''}),[token,setToken]=useState(()=>localStorage.getItem('nexo_token')||''),[user,setUser]=useState(()=>JSON.parse(localStorage.getItem('nexo_user')||'null')),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[view,setView]=useState('shop'),[summary,setSummary]=useState(null),[orders,setOrders]=useState([]),[productForm,setProductForm]=useState(blank),[editing,setEditing]=useState(null);
+ const[products,setProducts]=useState([]),[query,setQuery]=useState(''),[drawer,setDrawer]=useState(false),[auth,setAuth]=useState(false),[mode,setMode]=useState('login'),[form,setForm]=useState({name:'',email:'',password:''})),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[view,setView]=useState('shop'),[summary,setSummary]=useState(null),[orders,setOrders]=useState([]),[productForm,setProductForm]=useState(blank),[editing,setEditing]=useState(null);
 
  const {items:cart,count,total,add:addToCart,changeQuantity,remove:removeFromCart,clear:clearCart}=useCart();
+ const {token,user,login,register,logout}=useSession();
 
  async function load() {
     try {
@@ -51,16 +53,6 @@ export default function App(){
 
   useEffect(()=>{load()},[]);
 
- useEffect(() => {
-    if (!token) return;
-
-    api.getCurrentUser(token)
-      .then((currentUser) => {
-        setUser(currentUser);
-        localStorage.setItem('nexo_user', JSON.stringify(currentUser));
-      })
-      .catch(() => logout());
-  }, [token]);
 
  useEffect(()=>{if(notice){const t=setTimeout(()=>setNotice(''),3500);
 return()=>clearTimeout(t)}},[notice]);
@@ -81,19 +73,15 @@ async function authSubmit(e) {
 
     try {
       if (mode === 'register') {
-        await api.register(form);
+        await register(form);
         setMode('login');
         setNotice('Cuenta creada. Ahora inicia sesión.');
         return;
       }
 
-      const data = await api.login(form.email, form.password);
-      localStorage.setItem('nexo_token', data.access_token);
-      localStorage.setItem('nexo_user', JSON.stringify(data.user));
-      setToken(data.access_token);
-      setUser(data.user);
+      const currentUser = await login(form.email, form.password);
       setAuth(false);
-      setNotice('¡Hola, ' + data.user.name + '!');
+      setNotice('¡Hola, ' + currentUser.name + '!');
     } catch (error) {
       setNotice(error.message);
     } finally {
@@ -128,12 +116,11 @@ async function authSubmit(e) {
     }
   }
 
-  function logout(){localStorage.removeItem('nexo_token');
-localStorage.removeItem('nexo_user');
-setToken('');
-setUser(null);
-setView('shop');
-setNotice('Sesión cerrada')}
+  function handleLogout() {
+    logout();
+    setView('shop');
+    setNotice('Sesión cerrada');
+  }
 
 function editProduct(p){setEditing(p.id);
 setProductForm({name:p.name,description:p.description,price:String(p.price),stock:String(p.stock),category:p.category,image_url:p.image_url||''});
@@ -186,7 +173,7 @@ async function saveProduct(e) {
 <a href="#promesa">Nuestra promesa</a>{user&&<a href="#orders" onClick={()=>setView('orders')}>Mis pedidos</a>}{user?.role==='admin'&&<a href="#admin" onClick={()=>setView('admin')}>Administración</a>}</nav>
 <div className="actions">{user?<>
 <small>Hola, {user.name.split(' ')[0]}</small>
-<button className="plain" onClick={logout}>
+<button className="plain" onClick={handleLogout}>
 <LogOut size={17}/>
 </button>
 </>:<button className="plain" onClick={()=>setAuth(true)}>
